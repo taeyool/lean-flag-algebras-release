@@ -119,17 +119,6 @@ lemma partitions'_eq_partitions''
             Finset.disjoint_of_subset_right (h₄ _) Finset.disjoint_sdiff h₈ h₉
         · omega
 
--- lemma partitions'_card_eq_choose_mul_multinomial
---     {V : Finset α} {r_list : Fin t → ℕ}
---     : (partitions' V r_list).card = V.card.choose (∑ x, r_list x) * Nat.multinomial .univ r_list
---   := by
---   induction t generalizing V
---   case zero => simp [partitions']
---   case succ t ih =>
---   sorry
-
-/- Above is a WIP. -/
-
 lemma sum_eq_sum_plus_last
     (f : Fin (t + 1) → ℕ) : ∑ i : Fin (t + 1), f i = (∑ i : Fin t, f i.castSucc) + (f (Fin.last t))
   :=

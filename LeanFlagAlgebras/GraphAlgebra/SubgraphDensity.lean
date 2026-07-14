@@ -885,17 +885,6 @@ lemma graphCount_eq_sum_one (ℓ : ℕ) : graphCount ℓ = ∑ (_ : SimpleGraph 
   := by
   simp [graphCount]
 
--- have ⟨h_G₁_G₃, h_G₂_G₃⟩ : G₁.verts ∩ G₃.verts = ∅ ∧ G₂.verts ∩ G₃.verts = ∅ :=
---     Set.union_empty_iff.mp h_G₁_G₂_G₃
--- have h_G₃_G₁' : G₃.verts ⊆ G₁.vertsᶜ := by
---   have := (Set.inter_subset G₁.verts G₃.verts ∅).mp (by simp [h_G₁_G₃])
---   rw [Set.union_empty] at this
---   apply Set.subset_compl_comm.mp this
--- have h_G₃_G₂' : G₃.verts ⊆ G₂.vertsᶜ := by
---   have := (Set.inter_subset G₂.verts G₃.verts ∅).mp (by simp [h_G₂_G₃])
---   rw [Set.union_empty] at this
---   apply Set.subset_compl_comm.mp this
-
 lemma subset_compl_of_inter_empty {α : Type*} {s t : Set α} (h : s ∩ t = ∅) :
     s ⊆ tᶜ := fun e he ↦
   (Set.mem_compl_iff _ _).mpr fun ht ↦ (Set.ext_iff.mp h e).mp ⟨he, ht⟩
@@ -3133,7 +3122,6 @@ lemma subgraphPairDensity_sum_assoc
       rw [←Nat.add_sub_assoc h (ℓ₁ + ℓ₂₃)]
       apply Nat.sub_le_of_le_add
       linarith
-    -- simp_choose_eq `h_choose
     calc
       ℓ₁₂.choose ℓ₁ * (ℓ₁₂ - ℓ₁).choose ℓ₂ * ℓ.choose ℓ₁₂ * (ℓ - ℓ₁₂).choose ℓ₃ * C₁₂
       _ = ℓ₁₂.choose ℓ₁ * (ℓ₁₂ - ℓ₁).choose ℓ₂

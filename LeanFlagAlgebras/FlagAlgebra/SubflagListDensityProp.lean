@@ -670,10 +670,4 @@ theorem flagListDensity₂_prod_approx
             omega
           · rw [← Nat.cast_add]; apply sq_nonneg
 
--- theorem flagListDensity_prod_approx
---     (Fl : FlagList σ t Vl)
---     : ∃ k, ∀ {W : Type} [Fintype W] [DecidableEq W] (G : Flag σ W),
---     |flagListDensity Fl G - ∏ i ∈ Finset.univ, flagDensity₁ (Fl i) G| ≤ (∑ i ∈ Finset.univ, (Fl i).out.size) ^ k / G.out.size
---   := by sorry
-
 end FlagAlgebras
