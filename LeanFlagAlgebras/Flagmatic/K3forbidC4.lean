@@ -1,8 +1,3 @@
--- Auto-generated from Flagmatic certificate (description: '2-graph; maximize 4:12132434 density; forbid 3:121323').
--- Generator: LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py (gen-skeleton)
--- Matrix defs (M_t, dM_t, LM_t) and PSD proofs are filled in; the main
--- theorem body still needs to be written (see TODO at the bottom).
-
 import LeanFlagAlgebras.Flags.FlagGenerator
 import LeanFlagAlgebras.Flags.ForbidFreeGenerator
 import LeanFlagAlgebras.Automation.Basic

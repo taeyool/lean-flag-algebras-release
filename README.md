@@ -7,8 +7,8 @@ certificates into machine-checked extremal-combinatorics proofs.
 
 This repository is the public artifact accompanying our paper on formalized
 flag algebras. It contains the core library, the meta-theory of
-forbidden-subgraph reasoning, the Flagmatic-to-Lean autoformalisation pipeline,
-and a collection of fully verified Turán-type results.
+forbidden-subgraph reasoning, the Flagmatic-to-Lean certificate-to-proof
+compiler, and a collection of fully verified Turán-type results.
 
 ## What's here
 
@@ -16,7 +16,7 @@ and a collection of fully verified Turán-type results.
 |------|------|-------------|
 | Core library | `LeanFlagAlgebras/{FlagAlgebra,Flags,Forbid,GraphAlgebra,Turan}` | Flags, flag algebras, densities, forbidden-subgraph classes, Turán densities |
 | Meta-theory | `LeanFlagAlgebras/MetaTheory` | Completeness of forbidden-subgraph reasoning in flag algebras; graphon limits, blow-ups, root-planting, and a relative Positivstellensatz. See [`MetaTheory/paper.tex`](LeanFlagAlgebras/MetaTheory/paper.tex). |
-| Autoformalisation | `LeanFlagAlgebras/Flagmatic` | `flagmatic_to_lean.py` compiles Flagmatic SDP certificates (JSON) into Lean proofs; generated proofs for Mantel, Turán `K4`/`K5`, the Erdős pentagon, `C5`, and several forbidden-subgraph bounds |
+| Flagmatic-to-Lean | `LeanFlagAlgebras/Flagmatic` | `flagmatic_to_lean.py` compiles Flagmatic SDP certificates (JSON) into Lean proofs; generated proofs for Mantel, Turán `K4`/`K5`, the Erdős pentagon, `C5`, and several forbidden-subgraph bounds |
 | Tactics | `LeanFlagAlgebras/Automation` | Flag expansion / multiplication / sum-normalisation tactics and a PSD-certificate proof generator |
 | Worked results | `LeanFlagAlgebras/{MantelTheorem,ErdosPentagon,Logic}` | Additional hand-developed proofs of headline results |
 
