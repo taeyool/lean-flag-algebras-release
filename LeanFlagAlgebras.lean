@@ -66,11 +66,6 @@ import LeanFlagAlgebras.ErdosPentagon.FlagMul
 import LeanFlagAlgebras.ErdosPentagon.Lemmas
 import LeanFlagAlgebras.ErdosPentagon.ErdosPentagon
 
--- Logic
-import LeanFlagAlgebras.Logic.Defs
-import LeanFlagAlgebras.Logic.Tactic
-import LeanFlagAlgebras.Logic.MantelTheorem
-
 -- Flagmatic
 import LeanFlagAlgebras.Flagmatic.Mantel
 import LeanFlagAlgebras.Flagmatic.ErdosPentagon
