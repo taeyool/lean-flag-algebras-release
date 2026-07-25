@@ -6,11 +6,16 @@
 #   * the forbidden graph as a `Sym2Graph` term  `def K{r} := completeSym2Graph r`
 #     (decision D2 -- no canonical forbidden flag, no `generate_complete_graph`);
 #   * the edge-based pruned generation / density / multiplication commands
-#       generate_pruned_forbid_free_empty_typed_flags <n> K{r}
-#       generate_pruned_forbid_free_flags             <n> <k> <m> K{r}
-#       generate_pruned_flag_pair_density_theorems    <patN> <hostN> <k> <m> K{r}
-#       generate_pruned_forbid_free_mul_theorems      <patN> <hostN> <k> <m> K{r} (completeGraph (Fin r)) (completeSym2Graph_finFlag_mem_forbiddenFlags r)
-#     (densities are computed inside Lean -- no `*.json`, no Python regeneration);
+#       generate_forbid_free_empty_typed_flags <n> K{r}
+#       generate_forbid_free_flags             <n> <k> <m> K{r}
+#       generate_forbid_free_flag_pair_density_theorems    <patN> <hostN> <k> <m> K{r}
+#       generate_forbid_free_mul_theorems      <patN> <hostN> <k> <m> K{r}
+#       generate_forbid_free_flag_density_theorems <objN> <objIdx> <hostN> K{r}   [branch B only]
+#     (densities are computed inside Lean -- no `*.json`, no Python regeneration;
+#     the last command emits the `auto_flagDensity1_*` `@[simp]` table in-Lean, so
+#     the skeleton no longer spells those theorems out), preceded by the
+#     `set_option` block (`flagGen.kernelDecide` -- on by default, use
+#     `--native-decide` to opt out -- plus `maxHeartbeats 0` / `maxRecDepth`);
 #   * M_t / dM_t / LM_t + the one-line `psd_real_ldlt` PSD proof, the σ_t / v_t flag vectors, the forbid-free
 #     objective expansion (branch B, closed by `flag_expand_hfree`), and the
 #     auto-proved main theorem (`≤[completeGraph (Fin r)]`, ordinary forbid).
@@ -22,10 +27,12 @@
 # `Certificates/*_cert.json` reproduces the committed `Flagmatic/*.lean` (modulo
 # cosmetics) and `lake build` accepts the generated proofs.
 #
-# Scope: any forbidden graph. A complete graph K_r takes Route A (`completeSym2Graph`,
-# `generate_pruned_*`); any other graph takes Route B (an explicit edge set forbidden as a
-# non-induced subgraph, `generate_subgraph_free_*`). Both are auto-generated end to end
-# (see the K3/K4/K5 and C5 examples in this directory).
+# Scope: any forbidden graph, always forbidden as a (non-induced) subgraph. A complete
+# graph K_r takes Route A (a `completeSym2Graph r` term); any other graph takes Route B
+# (an explicit edge set). Both routes emit the *same* `generate_forbid_free_*` commands —
+# the Lean commands dispatch on clique-ness internally (for cliques the induced and
+# subgraph splits coincide, enabling the pruned fast path). Both are auto-generated end
+# to end (see the K3/K4/K5 and C5 examples in this directory).
 # `inspect` reports against those generation commands too: it dumps the
 # cert -> Lean-identifier mapping (every flag string resolved via the in-memory
 # enumeration) and prints the command block -- there are no JSON
@@ -65,12 +72,12 @@ This file has two layers:
   (2) CLI subcommands — used as a script. Four are provided:
 
         inspect       certificate -> Lean-identifier mapping dump + the
-                      `generate_pruned_*` command block it maps to (every
+                      `generate_forbid_free_*` command block it maps to (every
                       flagmatic string is resolved via the in-memory
                       enumeration, so this also validates the cert)
         gen-skeleton  write a complete starter Lean file: imports + opens +
                       namespace + `def K{r} := completeSym2Graph r` + the
-                      `generate_pruned_*` commands + M_t/dM_t/LM_t with PSD
+                      `generate_forbid_free_*` commands + M_t/dM_t/LM_t with PSD
                       lemmas + σ_t/v_t + auto-proved main theorem (branch A) or
                       forbid-free expand lemma (`flag_expand_hfree`) + main
                       theorem (branch B). For an unsupported description
@@ -87,11 +94,11 @@ USAGE EXAMPLES (PowerShell; use `\\` on bash):
   #    gen-skeleton emit? (`inspect` resolves every string, so it also
   #    validates the cert; it raises on the first string that fails to resolve.)
   python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py inspect `
-      LeanFlagAlgebras/Flagmatic/Certificates/mantel_cert.json
+      LeanFlagAlgebras/Flagmatic/Certificates/Mantel_cert.json
 
   # 2. Generate a complete starter Lean file with auto-proved main theorem.
   python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton `
-      LeanFlagAlgebras/Flagmatic/Certificates/mantel_cert.json `
+      LeanFlagAlgebras/Flagmatic/Certificates/Mantel_cert.json `
       LeanFlagAlgebras/Flagmatic/Mantel.lean --namespace Mantel --force
 
   # 3. Or, append-mode helpers when you have an existing file:
@@ -111,10 +118,13 @@ VERIFIED SCENARIOS (see Certificates/ for inputs, *.lean for outputs):
 
   cert                 forbid  N  n_obj  branch  blocks  bound
   -------------------  ------  -  -----  ------  ------  -----
-  mantel_cert          K3      3    2      B        1     1/2
-  K3forbidC4_cert      K3      4    4      A        2     3/8
-  K4turan_cert         K4      4    2      B        2     2/3
+  Mantel_cert          K3      3    2      B        1     1/2
+  K3freeP3_cert        K3      3    3      A        1     3/4
+  K3freeC4_cert        K3      4    4      A        2     3/8
+  K4freeEdge_cert      K4      4    2      B        2     2/3
   ErdosPentagon_cert   K3      5    5      A        3   24/625
+  K5freeEdge_cert      K5      5    2      B        4     3/4
+  C5freeEdge_cert      C5      5    2      B        4     1/2
 
 What's covered:
   * Branch A (n_obj == N) and Branch B (n_obj < N)
@@ -393,6 +403,78 @@ def _subscript(n: int) -> str:
     return "".join(SUBSCRIPT_DIGITS[int(c)] for c in str(n))
 
 
+def _is_connected(n: int, edges: frozenset[tuple[int, int]]) -> bool:
+    """Is the graph on `n` vertices with edge set `edges` connected?"""
+    if n == 0:
+        return True
+    adj: dict[int, list[int]] = {v: [] for v in range(n)}
+    for (u, v) in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    seen = {0}
+    stack = [0]
+    while stack:
+        for w in adj[stack.pop()]:
+            if w not in seen:
+                seen.add(w)
+                stack.append(w)
+    return len(seen) == n
+
+
+def _graph_prose(n: int, edges: frozenset[tuple[int, int]]) -> str | None:
+    """A conventional name for a small graph — ``K₃``, ``C₅``, ``P₃`` — or None.
+
+    Used only to phrase the human-readable summary in the generated main-theorem
+    docstring; every caller falls back to omitting that summary when this returns
+    None, so an unrecognized shape never blocks generation. Subscripts count
+    *vertices* (``P₃`` is the 3-vertex path), matching the paper's convention.
+    """
+    if edges == frozenset(combinations(range(n), 2)):
+        return f"K{_subscript(n)}"
+    if not _is_connected(n, edges):
+        return None
+    deg = [0] * n
+    for (u, v) in edges:
+        deg[u] += 1
+        deg[v] += 1
+    degs = sorted(deg)
+    if n >= 3 and len(edges) == n and degs == [2] * n:
+        return f"C{_subscript(n)}"
+    if n >= 2 and len(edges) == n - 1 and degs == [1, 1] + [2] * (n - 2):
+        return f"P{_subscript(n)}"
+    return None
+
+
+def _theorem_prose(desc: str, bound: str) -> str | None:
+    """One plain-language sentence for what the generated theorem says, or None
+    when either the objective or the forbidden graph is not a shape we can name.
+
+    Example: ``Every graph with no K₃ subgraph has edge density at most 1/2.``
+    """
+    try:
+        m = _DESC_OBJ_RE.search(desc)
+        if not m:
+            return None
+        obj_n, obj_edges, _ = parse_flagmatic(m.group(1))
+    except (ValueError, LookupError):
+        return None
+    forbid_n, forbid_edges, _tag = _forbid_graph_from_description(desc)
+    if forbid_n is None:
+        return None
+    forbid_name = _graph_prose(forbid_n, forbid_edges)
+    if forbid_name is None:
+        return None
+    if obj_n == 2 and len(obj_edges) == 1:
+        obj_desc = "edge density"
+    else:
+        obj_name = _graph_prose(obj_n, obj_edges)
+        if obj_name is None:
+            return None
+        obj_desc = f"{obj_name} density"
+    return (f"Every graph with no {forbid_name} subgraph has "
+            f"{obj_desc} at most {bound}.")
+
+
 # --------------------------------------------------------------------------- #
 # Matrix assembly: M_t = R_t · Q'_t · R_tᵀ  +  exact LDLᵀ decomposition
 # --------------------------------------------------------------------------- #
@@ -539,6 +621,10 @@ def {M_name} : Matrix (Fin {n}) (Fin {n}) ℚ :=
   {M_lit}
 noncomputable def {M_real} : Matrix (Fin {n}) (Fin {n}) ℝ :=
   ratMatrixToReal {M_name}
+-- Candidate exact-rational LDLᵀ witness for `{M_name}`: `{M_name} = {LM_name} * diag {dM_name} * {LM_name}ᵀ`
+-- with `{LM_name}` unit lower triangular. Computed by the translator and re-checked below by
+-- `psd_real_ldlt`, which proves the factorization and `0 ≤ {dM_name}` inside Lean; an
+-- incorrect witness is rejected rather than trusted.
 def {dM_name} : Fin {n} → ℚ :=
   {D_lit}
 def {LM_name} : Matrix (Fin {n}) (Fin {n}) ℚ :=
@@ -568,20 +654,23 @@ def _lean_real_literal(s) -> str:
     return f"({q.numerator} / {q.denominator} : ℝ)"
 
 
-def _objective_from_description(desc: str) -> tuple[str, int]:
-    """Return (Lean identifier, host-size n) for the objective flag.
+def _objective_from_description(desc: str) -> tuple[str, int, int]:
+    """Return (Lean identifier, vertex count n, canonical index) for the objective flag.
 
     Reads the `maximize <flagmatic> density` part of the description. The
-    flagmatic string is unlabeled (no parenthesized type size).
+    flagmatic string is unlabeled (no parenthesized type size). The canonical
+    index is the objective's position in the Lean `genSym2Graphs n` enumeration
+    (i.e. `Flag_{n}_0_0_{idx}`), consumed by the
+    `generate_forbid_free_flag_density_theorems` command line.
     """
     m = _DESC_OBJ_RE.search(desc)
     if not m:
         raise ValueError(
             f"could not parse `maximize ... density` from description: {desc!r}")
     flagmatic_str = m.group(1)
-    ident, _idx = graph_to_lean(flagmatic_str)
+    ident, idx = graph_to_lean(flagmatic_str)
     n, _, _ = parse_flagmatic(flagmatic_str)
-    return ident, n
+    return ident, n, idx
 
 
 def _forbid_finflag_expr(tag: str) -> str:
@@ -676,7 +765,7 @@ def _expansion_coefficients(
 
     The split is computed **in-memory** (no JSON): a host graph is *forbidden*
     iff it contains the forbid graph as a **(non-induced) subgraph**
-    (`subgraph_contains`) — the same semantics the `generate_subgraph_free_*`
+    (`subgraph_contains`) — the same semantics the `generate_forbid_free_*`
     pruned generators use. For a complete forbid `K_r` this coincides with
     `induced_density(K_r; host) ≠ 0`, so complete-graph examples are unchanged.
     """
@@ -708,54 +797,6 @@ def _format_expansion(terms: list[tuple[int, Fraction]], N: int) -> str:
     return " + ".join(parts)
 
 
-def _density_value_literal(q: Fraction) -> str:
-    """Format a rational density for the RHS of an auto-generated
-    `flagDensity₁ Flag_X Flag_Y = <q>` simp lemma."""
-    if q.denominator == 1:
-        return str(q.numerator)
-    return f"{q.numerator} / {q.denominator}"
-
-
-def render_density_simp_lemmas(
-    obj_flagmatic: str, N: int, skip_indices: frozenset[int] = frozenset()
-) -> tuple[str, dict[int, Fraction]]:
-    """Auto-generate `@[simp]` lemmas `flagDensity₁ Flag_obj Flag_host_i = <d_i>`
-    for every host index i in graphs_<N>.json. These are what `flag_expand_hfree
-    N K{r}` needs to close goals when the RHS omits zero-density terms.
-
-    `skip_indices` are host indices to omit — used for the forbid-containing
-    hosts, whose `Flag_N_0_0_i` is never generated by the pruned commands, so a
-    lemma naming it would reference an undefined constant.
-
-    Returns `(lean_text, densities_by_index)`.
-    """
-    obj_n, obj_edges, _ = parse_flagmatic(obj_flagmatic)
-    # Parse the objective flag indices for the Lean Flag name
-    obj_idx = find_unlabeled_index(obj_n, obj_edges)
-    obj_flag = f"Flag_{obj_n}_0_0_{obj_idx}"
-
-    hosts = load_graphs(N)
-    densities: dict[int, Fraction] = {}
-    blocks: list[str] = []
-    for i, host_edges in enumerate(hosts):
-        d = induced_density(obj_n, obj_edges, N, host_edges)
-        densities[i] = d
-        if i in skip_indices:
-            continue
-        host_flag = f"Flag_{N}_0_0_{i}"
-        thm_name = f"auto_flagDensity1_{obj_n}_0_0_{obj_idx}_{N}_0_0_{i}"
-        blocks.append(
-            f"@[simp]\n"
-            f"private theorem {thm_name}\n"
-            f"    : flagDensity₁ {obj_flag} {host_flag} = {_density_value_literal(d)}\n"
-            f"  := by\n"
-            f"  dsimp [{obj_flag}, {host_flag}]\n"
-            f"  rw [flagDensity₁_eq_sym2EmptyTypeFlagDensity₁]\n"
-            f"  native_decide\n"
-        )
-    return "\n".join(blocks), densities
-
-
 def render_expand_under_forbid(
     cert: dict,
     obj_ident: str,
@@ -770,6 +811,14 @@ def render_expand_under_forbid(
     Returns the Lean text for the standalone `lemma` declaration, or `None` if
     the post-forbid expansion would be empty (no admissible nonzero density —
     shouldn't happen for a valid certificate).
+
+    The `@[simp]` density-evaluation lemmas the expansion tactic needs
+    (`flag_expand_hfree N F` relies on `flagDensity₁` evaluating to concrete
+    rationals via simp) are NOT spelled out here: they are generated in-Lean by
+    the `generate_forbid_free_flag_density_theorems` command that
+    `render_pruned_commands` emits with the other generation commands (its free
+    mask skips every forbid-containing host, exactly matching the
+    `generate_forbid_free_*` output).
     """
     forbid_n, forbid_edges, _tag = _forbid_graph_from_description(
         cert.get("description", ""))
@@ -778,26 +827,14 @@ def render_expand_under_forbid(
     subgraph_mode = _tag is None
     forbid_graph_expr = (f"{forbid_tag}.toLabeledGraph.graph" if subgraph_mode
                          else f"completeGraph (Fin {forbid_n})")
-    expand_tac = (f"flag_expand_hfree_subgraph {N} {forbid_tag}" if subgraph_mode
-                  else f"flag_expand_hfree {N} {forbid_tag} "
-                       f"(completeSym2Graph_finFlag_mem_forbiddenFlags {forbid_n})")
-    admissible, forbidden = _expansion_coefficients(
+    # One tactic for both routes: `flag_expand_hfree` inspects `forbid_tag` itself and
+    # takes the clique route iff it unfolds to `completeSym2Graph r` (the same test the
+    # `generate_forbid_free_*` commands use to pick which `flagSetHfree_…_eq` to emit).
+    expand_tac = f"flag_expand_hfree {N} {forbid_tag}"
+    admissible, _forbidden = _expansion_coefficients(
         obj_flagmatic, N, forbid_n, forbid_edges)
     if not admissible:
         return None
-
-    # Auto-generate the @[simp] density-evaluation lemmas — these are what
-    # `flag_expand_hfree N F` needs to close (it relies on `flagDensity₁`
-    # evaluating to concrete rationals via simp). **Every** forbid-containing host
-    # is skipped (not just the nonzero-objective-density ones in `forbidden`): the
-    # pruned commands never generate its `Flag_N_0_0_i`, so naming one — even in a
-    # `= 0` lemma — would reference an undefined constant. Uses subgraph containment
-    # so the skip set exactly matches the `generate_subgraph_free_*` output.
-    skip = frozenset(
-        i for i, he in enumerate(load_graphs(N))
-        if subgraph_contains(forbid_n, forbid_edges, N, he))
-    density_lemmas, _densities = render_density_simp_lemmas(
-        obj_flagmatic, N, skip_indices=skip)
 
     # The pruned generator's `flagSetHfree` already excludes the forbidden hosts,
     # so the stated RHS is just the admissible (forbid-free) expansion and the
@@ -805,13 +842,10 @@ def render_expand_under_forbid(
     admissible_expr = _format_expansion(admissible, N)
 
     return (
-        f"-- Auto-generated `flagDensity₁` evaluation table (used by\n"
-        f"-- `flag_expand_hfree {N} {forbid_tag}` to evaluate density coefficients).\n"
-        f"{density_lemmas}\n"
-        f"/-- Edge-based forbid-free expansion of the objective: `{obj_ident}` is\n"
-        f"expanded directly over the {forbid_tag}-free {N}-vertex flags via\n"
-        f"`flag_expand_hfree {N} {forbid_tag}` (`basisVector_quot_forbidEq_sum` rewritten onto\n"
-        f"`flagSetHfree_{N}_0_0_{forbid_tag}`; the forbidden terms are dropped automatically). -/\n"
+        f"/-- Objective expansion. `flag_expand_hfree {N} {forbid_tag}` expands `{obj_ident}`\n"
+        f"over the {N}-vertex {forbid_tag}-free flags, rewriting the expansion theorem onto the\n"
+        f"generated set `flagSetHfree_{N}_0_0_{forbid_tag}`. Under the hypothesis the flags\n"
+        f"containing {forbid_tag} have density zero, so they never enter the sum. -/\n"
         f"lemma {lemma_name}\n"
         f"    : {obj_ident} =[{forbid_graph_expr}] {admissible_expr}\n"
         f"  := by\n"
@@ -870,7 +904,7 @@ def render_proof_body(
     """
     desc = cert.get("description", "")
     try:
-        obj_ident, n_obj = _objective_from_description(desc)
+        obj_ident, n_obj, _obj_idx = _objective_from_description(desc)
         obj_flagmatic = _DESC_OBJ_RE.search(desc).group(1)
     except (ValueError, LookupError, AttributeError):
         return None, None
@@ -971,7 +1005,6 @@ def render_proof_body(
             f"(forbidEqWith_smul (forbidEqWith_symm "
             f"(one_forbidEq_forbidExpand_one_subgraph {forbid_tag} {N})))\n"
         )
-        expand_one_line = f"  expand_one_hfree_at_subgraph {N} {forbid_tag}\n"
     else:
         one_expand_line = (
             f"  apply forbidLEWith_trans_forbidEqWith_right ?_  "
@@ -979,7 +1012,10 @@ def render_proof_body(
             f"(one_forbidEq_forbidExpand_one_ofMem {forbid_expr} "
             f"(completeSym2Graph_finFlag_mem_forbiddenFlags {forbid_n}) {N})))\n"
         )
-        expand_one_line = f"  expand_one_hfree_at {N} {forbid_tag}\n"
+    # One tactic for both routes: `expand_one_hfree_at` inspects `forbid_tag` itself and
+    # unfolds `forbidExpand_one` or `forbidExpand_one_subgraph` accordingly, matching
+    # whichever `one_forbidEq_forbidExpand_one_*` step was emitted just above.
+    expand_one_line = f"  expand_one_hfree_at {N} {forbid_tag}\n"
 
     proof = (
         f"{prefix}"
@@ -1016,7 +1052,7 @@ def render_theorem_statement(cert: dict, theorem_name: str, proof_body: str | No
     """
     desc = cert.get("description", "")
     try:
-        objective_ident, _n_obj = _objective_from_description(desc)
+        objective_ident, _n_obj, _obj_idx = _objective_from_description(desc)
         obj_repr = objective_ident
     except (ValueError, LookupError) as e:
         obj_repr = f"/- TODO: objective flag (parsing failed: {e}) -/"
@@ -1045,8 +1081,12 @@ def render_theorem_statement(cert: dict, theorem_name: str, proof_body: str | No
         tactic_block = proof_body
         note = "auto-generated"
 
+    prose = _theorem_prose(desc, str(bound))
+    prose_block = f"{prose}\n\n" if prose else ""
+
     return (
         f"/-- **Main theorem ({note}).**\n"
+        f"{prose_block}"
         f"Certificate description: {desc!r}\n"
         f"Bound: {bound!r}. -/\n"
         f"theorem {theorem_name}\n"
@@ -1104,17 +1144,28 @@ LEAN_OPENS: list[str] = [
 ]
 
 
-def render_pruned_commands(cert: dict) -> str:
+def render_pruned_commands(cert: dict, kernel_decide: bool = True) -> str:
     """Emit the `def K{r}` forbid graph + the edge-based pruned generation /
     density / multiplication commands this certificate needs.
 
-    Command-set rule (derived from the `generate_pruned_*` elab prerequisites):
+    Command-set rule (derived from the `generate_forbid_free_*` elab prerequisites):
       * empty-typed sizes = {objective size} ∪ {host N} ∪ {pattern size per block}
-        (a σ-typed `generate_pruned_forbid_free_flags n …` needs empty-typed at n;
+        (a σ-typed `generate_forbid_free_flags n …` needs empty-typed at n;
         the objective + host expansion name `FlagAlgebra_{n_obj/N}_0_0_*`);
       * typed flags        = (patN, k, m) and (N, k, m) per block;
-      * pair-density + mul = (patN, N, k, m) per block.
+      * pair-density + mul = (patN, N, k, m) per block;
+      * flag-density table = (n_obj, obj_idx, N) — only when n_obj < N (branch B):
+        `generate_forbid_free_flag_density_theorems` emits the `auto_flagDensity1_*`
+        `@[simp]` lemmas `flag_expand_hfree` consumes.
     Only complete-graph forbids are supported (the forbid is `completeSym2Graph r`).
+
+    The `set_option` block precedes the first generate command: `maxHeartbeats 0`
+    and `maxRecDepth 1000000` are always emitted (they must also cover the main
+    theorem later in the file — the AC-sort / re-association on a long RHS sum
+    otherwise hits "maximum recursion depth has been reached"), and, when
+    `kernel_decide` is True (the default), `set_option flagGen.kernelDecide true`
+    so that all bridging lemmas — including the flag-density table — are proved with
+    `decide +kernel` instead of `native_decide`.
     """
     desc = cert.get("description", "")
     forbid_n, forbid_edges, tag = _forbid_graph_from_description(desc)
@@ -1125,9 +1176,11 @@ def render_pruned_commands(cert: dict) -> str:
         tag = "ForbidGraph"
     N = int(cert["order_of_admissible_graphs"])
 
-    # Objective size — the empty-typed flags the objective / its expansion name.
+    # Objective size / canonical index — the empty-typed flags the objective /
+    # its expansion name, and the flag-density-table parameters.
+    obj_idx: int | None = None
     try:
-        _obj_ident, n_obj = _objective_from_description(desc)
+        _obj_ident, n_obj, obj_idx = _objective_from_description(desc)
     except (ValueError, LookupError):
         n_obj = N
 
@@ -1143,46 +1196,88 @@ def render_pruned_commands(cert: dict) -> str:
         typed_triples.add((N, k, type_idx))
         block_params.append((patN, k, type_idx))
 
+    # `set_option` lines inserted before the first generate command. The
+    # kernel-decide switch must precede the generators so their emitted
+    # `flag_bridge_decide` proofs pick it up; the heartbeat / recursion-depth
+    # options are file-wide (command-level `set_option` scopes to the rest of
+    # the file) and also cover the main theorem below.
+    option_lines: list[str] = []
+    if kernel_decide:
+        option_lines += [
+            "-- Every generated bridging lemma is proved by `decide +kernel`, so this file",
+            "-- introduces no compiled-evaluation axiom: `#print axioms` on the main theorem",
+            "-- below lists only Lean's own three.",
+            "set_option flagGen.kernelDecide true",
+        ]
+    else:
+        option_lines += [
+            "-- Generated bridging lemmas are proved by `native_decide`, so the main theorem below",
+            "-- additionally depends on the `Lean.ofReduceBool` and `Lean.trustCompiler` axioms,",
+            "-- which trust Lean's compiler and runtime for the evaluated decision procedures.",
+            "-- Regenerating without `--native-decide` proves the same lemmas by `decide +kernel`",
+            "-- and removes both, at a higher build cost.",
+        ]
+    option_lines += [
+        "-- The generation commands run large decision procedures during elaboration, and the",
+        "-- closing normalization recurses over a long flag sum; both limits are lifted for the",
+        "-- rest of the file.",
+        "set_option maxHeartbeats 0",
+        "set_option maxRecDepth 1000000",
+    ]
+
+    # Branch B only: the `auto_flagDensity1_*` `@[simp]` evaluation table, emitted
+    # in-Lean (last — it needs the empty-typed flags at both n_obj and N).
+    flag_density_lines: list[str] = []
+    if obj_idx is not None and n_obj < N:
+        flag_density_lines = [
+            f"generate_forbid_free_flag_density_theorems {n_obj} {obj_idx} {N} {tag}",
+        ]
+
     if subgraph_mode:
         # Non-complete forbid → *subgraph* semantics (Route B). The forbidden graph is an explicit
-        # `Sym2Graph` term, and the `generate_subgraph_free_*` commands emit the subgraph-`F`-free
+        # `Sym2Graph` term, and the `generate_forbid_free_*` commands emit the subgraph-`F`-free
         # flags whose completeness bridges to the subgraph capstone's filter.
         edge_terms = ", ".join(f"s({u}, {v})" for (u, v) in sorted(forbid_edges))
         lines = [
-            f"-- Subgraph-forbidding generation (Route B): `{tag}` is forbidden as a (non-induced)",
-            f"-- subgraph. The `generate_subgraph_free_*` commands emit only the subgraph-`{tag}`-free",
-            f"-- flags + completeness bridging to the subgraph capstone filter (`supergraphFamily`).",
+            f"-- The forbidden graph, as the {forbid_n}-vertex `Sym2Graph` term `{tag}`. It is forbidden",
+            f"-- as a subgraph, not necessarily an induced one, so a copy of `{tag}` may carry extra",
+            f"-- edges. The generation commands below prune against it: a flag containing `{tag}` is",
+            f"-- never enumerated, and they emit the subgraph-`{tag}`-free flags, the completeness lemma",
+            f"-- for that set, and the pair-density / multiplication theorems the proof consumes.",
             f"def {tag} : Sym2Graph {forbid_n} where",
             f"  edges := {{{edge_terms}}}",
             f"  edges_valid := by decide",
         ]
+        lines.extend(option_lines)
         for n in sorted(empty_sizes):
-            lines.append(f"generate_subgraph_free_empty_typed_flags {n} {tag}")
+            lines.append(f"generate_forbid_free_empty_typed_flags {n} {tag}")
         for (n, k, m) in sorted(typed_triples):
-            lines.append(f"generate_subgraph_free_flags {n} {k} {m} {tag}")
+            lines.append(f"generate_forbid_free_flags {n} {k} {m} {tag}")
         for (patN, k, m) in block_params:
-            lines.append(f"generate_subgraph_free_flag_pair_density_theorems {patN} {N} {k} {m} {tag}")
-            lines.append(f"generate_subgraph_free_mul_theorems {patN} {N} {k} {m} {tag}")
+            lines.append(f"generate_forbid_free_flag_pair_density_theorems {patN} {N} {k} {m} {tag}")
+            lines.append(f"generate_forbid_free_mul_theorems {patN} {N} {k} {m} {tag}")
+        lines.extend(flag_density_lines)
         return "\n".join(lines)
 
     lines = [
-        f"-- Edge-based, pruning-backed forbid-free generation (decision D2): the forbidden",
-        f"-- graph is the `Sym2Graph {forbid_n}` term `{tag} := completeSym2Graph {forbid_n}` (no canonical",
-        f"-- forbidden flag, no `generate_complete_graph`); the {tag}-containing flags are never",
-        f"-- generated. The pruned commands emit only the {tag}-free flags, their completeness, and",
-        f"-- the forbid-free pair-density / multiplication theorems consumed by the proof below.",
+        f"-- The forbidden graph, as the {forbid_n}-vertex `Sym2Graph` term `{tag}`: the complete graph",
+        f"-- K{_subscript(forbid_n)}, for which containing a copy and containing an induced copy coincide.",
+        f"-- The generation commands below prune against it: a flag containing {tag} is never",
+        f"-- enumerated, and they emit the {tag}-free flags, the completeness lemma for that set, and",
+        f"-- the pair-density / multiplication theorems the proof consumes.",
         f"def {tag} : Sym2Graph {forbid_n} := completeSym2Graph {forbid_n}",
     ]
+    lines.extend(option_lines)
     for n in sorted(empty_sizes):
-        lines.append(f"generate_pruned_forbid_free_empty_typed_flags {n} {tag}")
+        lines.append(f"generate_forbid_free_empty_typed_flags {n} {tag}")
     for (n, k, m) in sorted(typed_triples):
-        lines.append(f"generate_pruned_forbid_free_flags {n} {k} {m} {tag}")
+        lines.append(f"generate_forbid_free_flags {n} {k} {m} {tag}")
     for (patN, k, m) in block_params:
         lines.append(
-            f"generate_pruned_flag_pair_density_theorems {patN} {N} {k} {m} {tag}")
+            f"generate_forbid_free_flag_pair_density_theorems {patN} {N} {k} {m} {tag}")
         lines.append(
-            f"generate_pruned_forbid_free_mul_theorems {patN} {N} {k} {m} {tag}"
-            f" (completeGraph (Fin {forbid_n})) (completeSym2Graph_finFlag_mem_forbiddenFlags {forbid_n})")
+            f"generate_forbid_free_mul_theorems {patN} {N} {k} {m} {tag}")
+    lines.extend(flag_density_lines)
     return "\n".join(lines)
 
 
@@ -1195,8 +1290,9 @@ def required_lean_imports(cert: dict, branch_b: bool = False) -> list[str]:
 
     `branch_b` (objective size < host N) additionally pulls in `Automation.FlagExpand`
     (the `flag_expand_hfree` tactic) and `FlagAlgebra.Compute.FlagDensity` (the
-    `flagDensity₁` reflection lemma for the auto-generated `@[simp]` density
-    table) — both unused, hence omitted, when the objective is itself a host flag.
+    `flagDensity₁` layer the command-generated `auto_flagDensity1_*` `@[simp]`
+    table lives in) — both unused, hence omitted, when the objective is itself a
+    host flag.
     """
     base = [
         "import LeanFlagAlgebras.Flags.FlagGenerator",
@@ -1223,13 +1319,26 @@ def required_lean_imports(cert: dict, branch_b: bool = False) -> list[str]:
     return base
 
 
-def render_skeleton(cert: dict, namespace: str, theorem_name: str = "main") -> str:
+def render_skeleton(
+    cert: dict,
+    namespace: str,
+    theorem_name: str = "main",
+    kernel_decide: bool = True,
+    regen_cmd: str | None = None,
+) -> str:
     """Render a complete starter Lean API file for the edge-based pruned pipeline:
-    imports, opens, namespace, `def K{r}` + `generate_pruned_*` commands, the
+    imports, opens, namespace, `def K{r}` + the `set_option` block +
+    `generate_forbid_free_*` commands (including the branch-B flag-density table), the
     matrix/PSD defs, σ_t / v_t definitions, the forbid-free objective expansion
-    (branch B), and the auto-proved main theorem."""
+    (branch B), and the auto-proved main theorem.
+
+    When `kernel_decide` is True (the default), `set_option flagGen.kernelDecide
+    true` is emitted before the generate commands so all bridging lemmas use
+    `decide +kernel`; the `maxHeartbeats 0` / `maxRecDepth 1000000` options are
+    emitted there unconditionally (see `render_pruned_commands`).
+    """
     opens = "\n".join(LEAN_OPENS)
-    commands = render_pruned_commands(cert)
+    commands = render_pruned_commands(cert, kernel_decide=kernel_decide)
     matrices_body = render_matrices(cert)
     vectors_body = render_flag_vectors(cert)
     # render_flag_vectors prepends a 2-line auto-gen header; strip it so the
@@ -1239,10 +1348,21 @@ def render_skeleton(cert: dict, namespace: str, theorem_name: str = "main") -> s
         if not line.startswith("-- Auto-generated") and not line.startswith("-- Generator:")
     ).lstrip("\n")
 
+    # Provenance header. The regeneration command makes the file reproducible and
+    # signals that hand edits are lost on the next run; it falls back to naming the
+    # script when `render_skeleton` is called programmatically without one.
+    if regen_cmd:
+        regen_lines = "".join(f"--   {line}\n" for line in regen_cmd.splitlines())
+    else:
+        regen_lines = (
+            "--   python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton "
+            "<cert>.json <target>.lean\n"
+        )
     header = (
         f"-- Auto-generated from Flagmatic certificate "
         f"(description: {cert.get('description', '')!r}).\n"
-        f"-- Generator: LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py (gen-skeleton)\n"
+        f"-- Do not edit by hand; regenerate with\n"
+        f"{regen_lines}"
     )
 
     proof_body, helper_lemma = render_proof_body(cert, theorem_name)
@@ -1263,13 +1383,11 @@ def render_skeleton(cert: dict, namespace: str, theorem_name: str = "main") -> s
 
     imports = "\n".join(import_list)
 
+    # `set_option maxHeartbeats 0` / `set_option maxRecDepth 1000000` are NOT emitted
+    # here: `render_pruned_commands` places them before the first generate command,
+    # and command-level `set_option` scopes to the rest of the file, so they cover
+    # the expansion lemma and the main theorem too.
     theorem_block = (
-        # `maxHeartbeats 0` already disables the heartbeat limit (0 = unlimited). `maxRecDepth` is
-        # bumped well above the 2000 default: the AC-sort / re-association on a long RHS sum (large
-        # SDP blocks, e.g. subgraph forbids) otherwise hits "maximum recursion depth has been reached".
-        f"set_option maxHeartbeats 0\n"
-        f"set_option maxRecDepth 1000000\n"
-        f"\n"
         f"{helper_section}"
         f"{fallback_note}"
         f"{render_theorem_statement(cert, theorem_name, proof_body)}"
@@ -1298,7 +1416,7 @@ def _derive_theorem_name(cert_path: Path) -> str:
     """Suggest a theorem name from the certificate filename.
 
     Strips common flagmatic export suffixes (`_sparse_cert`, `_cert`, ...) and
-    appends `_flagAlgebra` (e.g. `mantel_cert.json` -> `mantel_flagAlgebra`).
+    appends `_flagAlgebra` (e.g. `Mantel_cert.json` -> `Mantel_flagAlgebra`).
     """
     stem = cert_path.stem
     for suffix in ("_sparse_cert", "_dense_cert", "_cert", "_sdp_output", "_sdp"):
@@ -1354,10 +1472,20 @@ def _cmd_gen_skeleton(args: argparse.Namespace) -> int:
         )
         return 2
     theorem_name = args.theorem_name or _derive_theorem_name(args.certificate)
-    text = render_skeleton(cert, namespace, theorem_name)
+    # Record the invocation that produced this file, with forward slashes so the
+    # comment reads the same on every platform.
+    regen_cmd = (
+        f"python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton \\\n"
+        f"  {args.certificate.as_posix()} \\\n"
+        f"  {args.target.as_posix()} --namespace {namespace}"
+        f"{'' if args.kernel_decide else ' --native-decide'} --force"
+    )
+    text = render_skeleton(cert, namespace, theorem_name,
+                           kernel_decide=args.kernel_decide, regen_cmd=regen_cmd)
     args.target.parent.mkdir(parents=True, exist_ok=True)
     args.target.write_text(text, encoding="utf-8")
-    print(f"wrote {len(text)} chars to {args.target} (namespace {namespace})")
+    kd_note = " [kernel-decide mode]" if args.kernel_decide else " [native-decide mode]"
+    print(f"wrote {len(text)} chars to {args.target} (namespace {namespace}){kd_note}")
     return 0
 
 
@@ -1488,11 +1616,35 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help=(
             "name of the main theorem. Default: derived from the certificate "
-            "filename, e.g. `mantel_cert.json` -> `mantel_flagAlgebra`."
+            "filename, e.g. `Mantel_cert.json` -> `Mantel_flagAlgebra`."
         ),
     )
     p_skel.add_argument("--force", action="store_true",
                         help="overwrite the target if it exists")
+    proof_mode = p_skel.add_mutually_exclusive_group()
+    proof_mode.add_argument(
+        "--kernel-decide",
+        dest="kernel_decide",
+        action="store_true",
+        default=True,
+        help=(
+            "Emit `set_option flagGen.kernelDecide true` before the generate commands "
+            "(default). All bridging lemmas — including the auto flag-density table — are "
+            "proved with `decide +kernel` instead of `native_decide`, so the file "
+            "carries no compiled-evaluation axioms. Slower than --native-decide for "
+            "host size N = 5."
+        ),
+    )
+    proof_mode.add_argument(
+        "--native-decide",
+        dest="kernel_decide",
+        action="store_false",
+        help=(
+            "Use `native_decide` for bridging lemmas instead. Faster (recommended "
+            "while iterating on host size N = 5), but the file then depends on the "
+            "compiled-evaluation axioms (`Lean.ofReduceBool`)."
+        ),
+    )
     p_skel.set_defaults(func=_cmd_gen_skeleton)
 
     args = ap.parse_args(argv)

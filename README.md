@@ -16,9 +16,9 @@ compiler, and a collection of fully verified Turán-type results.
 |------|------|-------------|
 | Core library | `LeanFlagAlgebras/{FlagAlgebra,Flags,Forbid,GraphAlgebra,Turan}` | Flags, flag algebras, densities, forbidden-subgraph classes, Turán densities |
 | Meta-theory | `LeanFlagAlgebras/MetaTheory` | Completeness of forbidden-subgraph reasoning in flag algebras; graphon limits, blow-ups, root-planting, and a relative Positivstellensatz. See [`MetaTheory/paper.tex`](LeanFlagAlgebras/MetaTheory/paper.tex). |
-| Flagmatic-to-Lean | `LeanFlagAlgebras/Flagmatic` | `flagmatic_to_lean.py` compiles Flagmatic SDP certificates (JSON) into Lean proofs; generated proofs for Mantel, Turán `K4`/`K5`, the Erdős pentagon, `C5`, and several forbidden-subgraph bounds |
+| Flagmatic-to-Lean | `LeanFlagAlgebras/Flagmatic` | `flagmatic_to_lean.py` compiles Flagmatic SDP certificates (JSON) into Lean proofs; generated proofs for the paper's seven case studies (Mantel, `K3`-free `P3`/`C4` densities, `K4`/`K5`-free edge densities, the Erdős pentagon, and the `C5`-free edge density) |
 | Tactics | `LeanFlagAlgebras/Automation` | Flag expansion / multiplication / sum-normalisation tactics and a PSD-certificate proof generator |
-| Worked results | `LeanFlagAlgebras/{MantelTheorem,ErdosPentagon,Logic}` | Additional hand-developed proofs of headline results |
+| Worked results | `LeanFlagAlgebras/{MantelTheorem,ErdosPentagon}` | Additional hand-developed proofs of headline results |
 
 The self-contained meta-theory paper source is included at
 [`LeanFlagAlgebras/MetaTheory/paper.tex`](LeanFlagAlgebras/MetaTheory/paper.tex).
@@ -37,7 +37,7 @@ lake exe cache get
 lake build
 
 # or build a single module and its dependencies (much faster)
-lake build LeanFlagAlgebras.Flagmatic.MantelHfree
+lake build LeanFlagAlgebras.Flagmatic.Mantel
 ```
 
 A full build is heavy (several thousand compilation jobs; some certificate

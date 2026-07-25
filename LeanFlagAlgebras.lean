@@ -66,13 +66,14 @@ import LeanFlagAlgebras.ErdosPentagon.FlagMul
 import LeanFlagAlgebras.ErdosPentagon.Lemmas
 import LeanFlagAlgebras.ErdosPentagon.ErdosPentagon
 
--- Flagmatic
+-- Flagmatic (the seven paper case studies, in the order of the paper's Section 5.4 table)
 import LeanFlagAlgebras.Flagmatic.Mantel
+import LeanFlagAlgebras.Flagmatic.K3freeP3
+import LeanFlagAlgebras.Flagmatic.K3freeC4
+import LeanFlagAlgebras.Flagmatic.K4freeEdge
 import LeanFlagAlgebras.Flagmatic.ErdosPentagon
-import LeanFlagAlgebras.Flagmatic.K3forbidP3
-import LeanFlagAlgebras.Flagmatic.K3forbidC4
-import LeanFlagAlgebras.Flagmatic.K4turan
-import LeanFlagAlgebras.Flagmatic.K5turan
+import LeanFlagAlgebras.Flagmatic.K5freeEdge
+import LeanFlagAlgebras.Flagmatic.C5freeEdge
 
 -- MetaTheory (paper.tex §1–8, plus §9 pinning obstruction): complete and sorry-free
 import LeanFlagAlgebras.MetaTheory
@@ -94,7 +95,7 @@ The imports above are grouped by layer, roughly from foundations upward:
 * **API** — the reusable proof-automation layer (`Basic`, `ExprHelpers`,
   `FlagExpand`, `FlagMulReduce`, `FlagSumSort`) and the per-problem
   density-bound proofs (ErdosPentagon, Mantel, C4 Turán, K4-free P₄).
-* **MantelTheorem / ErdosPentagon / Turan / Forbid / Logic** — the
+* **MantelTheorem / ErdosPentagon / Turan / Forbid** — the
   problem-specific developments and the `Forbid` (almost-sure inequality under
   a forbidden subgraph) foundation they build on.
 

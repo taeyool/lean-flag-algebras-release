@@ -32,6 +32,9 @@ HANDOFF.md
 *.pdf
 *.run.xml
 *.snm
-*.synctex.gz
+*.synctex*
 *.toc
 *.xdv
+
+# local referee/review notes (not part of the repo)
+papers/POPL27/referee_feedback_paper_draft.md
