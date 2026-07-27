@@ -1,8 +1,9 @@
 # `LeanFlagAlgebras/Flagmatic/` - Flagmatic certificate to Lean automation
 
-This directory contains the tools that **turn Flagmatic SDP certificates into
-Lean 4 flag-algebra proofs automatically**, together with the generated proof
-artifacts: the seven case studies evaluated in the paper (Section 5.4).
+This directory is the **main contribution of the accompanying paper**: the
+tools that **turn Flagmatic SDP certificates into Lean 4 flag-algebra proofs
+automatically**, together with the generated proof artifacts — the seven case
+studies evaluated in the paper (Section 5.4).
 
 ```
 Flagmatic/
@@ -12,6 +13,20 @@ Flagmatic/
 ├── Certificates/          ← input: sparse SDP JSON exported by Flagmatic
 └── *.lean                 ← output: proof files generated from the certificates
 ```
+
+---
+
+## Requirements
+
+- **Checking the committed proofs**: nothing beyond the repository's pinned
+  Lean toolchain — the certificates (`Certificates/*.json`) and the proof
+  files generated from them (`*.lean`) are both checked in, and `lake build`
+  re-verifies everything.
+- **Running `flagmatic_to_lean.py`**: Python 3, standard library only.
+- **Producing new SDP certificates**:
+  [Flagmatic](https://github.com/jsliacan/flagmatic), which runs under
+  [SageMath](https://www.sagemath.org/). The seven committed certificates are
+  Flagmatic's output as produced.
 
 ---
 
