@@ -536,10 +536,9 @@ consumer of the certificate inherits **compiled-evaluation trust** — for these
 *compiler* (not just the kernel) joins the trusted base. `MetaTheory` itself contains **no**
 `native_decide`; the inheritance is the whole story.
 
-Crucially, the `Automation` layer's two *declared* axioms — `Zykov_K4_density_bound` and
-`Turan_limit_P4_density` — are provably **not** used by any `MetaTheory` theorem (verified by
-`#print axioms`): the Zykov bound enters only as the explicit hypothesis `hZykov` (its equality
-case as `hZykEq`), and axiom-backed slice-nonemptiness enters only as `hne` hypotheses
+Crucially, no `axiom` is declared anywhere in this repository: the classical Zykov
+`K₄`-density bound enters only as the explicit hypothesis `hZykov` (its equality
+case as `hZykEq`), and slice-nonemptiness enters only as `hne` hypotheses
 (Deviation 14a). So no mathematical statement is postulated anywhere in the `MetaTheory`
 dependency cone; the Tier-2 increment over Tier 1 is purely the compiled-evaluation trust of
 `native_decide`.
@@ -856,8 +855,8 @@ Each is detailed below and in the relevant module's header.
       is also itself a theorem under the §11.5 identities' ES hypothesis `hES` — Deviation 15) and
       `huniq` (`k4free_qualitative_stability`); Zykov's `K₄`-density bound as `hZykov` and its
       equality case as `hZykEq` (`ParametricP4Slice`/`SliceRecovery`); stability moduli as `hmod`
-      (`Graphon.stability_via_modulus`); and slice nonemptiness, where it is axiom-backed upstream
-      (the `Automation` layer's `Turan_limit_P4_density`), as `hne` hypotheses. No classical
+      (`Graphon.stability_via_modulus`); and slice nonemptiness (the classical Turán-limit
+      existence statement, not proved in this repository) as `hne` hypotheses. No classical
       statement is postulated anywhere in `MetaTheory`.
     * **(b) The §11.7–§11.8 graphon layer is self-contained kernel measure theory on
       `unitInterval`.** Mathlib has no graphons — [`GraphonBasic`](./GraphonBasic.lean) defines

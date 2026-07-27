@@ -487,9 +487,8 @@ README's **[Scope & limitations](./README.md#scope--limitations)** for the autho
   `Lean.ofReduceBool` and `Lean.trustCompiler`, inherited from the `Automation` layer's
   `native_decide` bridges (there is no `native_decide` inside `MetaTheory`). Everything else must
   print exactly the three standard axioms. See the README's
-  **[Axioms assumed](./README.md#axioms-assumed)** for the full two-tier story, including the fact
-  that the `Automation` layer's declared axioms (`Zykov_K4_density_bound`,
-  `Turan_limit_P4_density`) are used by **no** `MetaTheory` theorem.
+  **[Axioms assumed](./README.md#axioms-assumed)** for the full two-tier story. (No `axiom`
+  is declared anywhere in this repository; classical inputs enter only as named hypotheses.)
 
 * **Mechanical re-verification (the kernel-acceptance gate).** From the repo root, run
   `lake exe cache get`, then `lake build LeanFlagAlgebras.MetaTheory` (the whole layer must go green),

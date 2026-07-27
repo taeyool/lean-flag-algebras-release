@@ -49,13 +49,6 @@ tables are in the [MetaTheory README](LeanFlagAlgebras/MetaTheory/README.md)):
 | Relative (slice) Positivstellensatz | `relative_positivstellensatz` | [`MetaTheory/RelativePositivstellensatz.lean`](LeanFlagAlgebras/MetaTheory/RelativePositivstellensatz.lean) |
 | The `C₅`-free class is not root-plantable at the edge type | `c5free_edge_not_rootPlantable` | [`MetaTheory/C5EdgeObstruction.lean`](LeanFlagAlgebras/MetaTheory/C5EdgeObstruction.lean) |
 
-A further worked example — Theorem 1.3(i) of Murphy–Nir (2021), the optimal
-`K_{r+1}`-free `P₄` density (`Kr_plus_1_free_P4_density_upper_bound` /
-`..._achievable` in
-[`Automation/CompleteGraphFreeP4.lean`](LeanFlagAlgebras/Automation/CompleteGraphFreeP4.lean))
-— is proved modulo two explicitly declared classical inputs; see
-[Verification status](#verification-status).
-
 ## What's here
 
 | Area | Path | Description |
@@ -68,8 +61,9 @@ A further worked example — Theorem 1.3(i) of Murphy–Nir (2021), the optimal
 
 ## Verification status
 
-- **Sorry-free.** The library contains no `sorry` or `admit`; every proof is
-  elaborated and checked by the Lean kernel. The root module
+- **Sorry-free and axiom-free.** The library contains no `sorry` or `admit`
+  and declares no `axiom`s; every proof is elaborated and checked by the Lean
+  kernel. The root module
   [`LeanFlagAlgebras.lean`](LeanFlagAlgebras.lean) imports the entire
   library, so `lake build` re-verifies everything.
 - **Axioms.** Five of the seven certificate case studies are checked entirely
@@ -78,12 +72,6 @@ A further worked example — Theorem 1.3(i) of Murphy–Nir (2021), the optimal
   The two largest cases (`K5freeEdge`, `C5freeEdge`) discharge their finite
   computations with `native_decide` and therefore additionally trust Lean's
   compiler and runtime (`Lean.ofReduceBool`, `Lean.trustCompiler`).
-- **Explicit classical inputs.** The only `axiom` declarations in the
-  repository are two documented external inputs in
-  [`Automation/CompleteGraphFreeP4.lean`](LeanFlagAlgebras/Automation/CompleteGraphFreeP4.lean)
-  (Zykov's clique-density bound and the Turán-limit `P₄` density), used only
-  by the Murphy–Nir example above; `#print axioms` on that example's theorems
-  exhibits the dependence.
 - **Trusted base.** Neither the SDP solver nor the Python compiler is trusted
   for soundness: the generated files carry complete proofs that Lean checks.
   The compiler is trusted only for *translation fidelity* — that the

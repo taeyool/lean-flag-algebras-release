@@ -16,7 +16,7 @@ result `K4_free_P4_density_upper_bound` shows that for K₄-free graphs the path
 The proof assembles a sum-of-squares certificate from three squared flag
 combinations `f₁, f₂, f₃` and discharges the resulting `inducedForbidLE` goal with the
 Automation tactics (`reduce_downward_flagmul`, `expand_one_at`, `flag_nonneg`). It is
-the `r = 3` instance of the more general `CompleteGraphFreeP4` result.
+the `r = 3` instance of the parametric `CompleteGraphFreeP4` certificate.
 -/
 
 open FlagAlgebras Forbid FlagAlgebras.Automation

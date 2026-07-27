@@ -6,16 +6,11 @@ import LeanFlagAlgebras.Flags.Densities.DensityThmGenerator
 import LeanFlagAlgebras.Automation.FlagSumSort
 import LeanFlagAlgebras.Forbid.CommonGraphs
 
-/-! # Automation.CompleteGraphFreeP4 — P₄ density bound in K_{r+1}-free graphs
+/-! # Automation.CompleteGraphFreeP4 — parametric P₄ certificate for K_{r+1}-free graphs
 
-Per-problem density-bound proof on the Automation layer, generalizing
-`Automation.K4freeP4` from K₄ to an arbitrary forbidden complete graph K_{r+1}. The
-headline result `Kr_plus_1_free_P4_density_upper_bound` (upper-bound direction
-of Theorem 1.3(i), Murphy–Nir 2021) states that for `r ≥ 3` and K_{r+1}-free
-graphs the `P₄` density is at most `12·((r-1)/r)³`:
-
-  `P4_density ≤ᵢ[(completeGraph (Fin (r+1))).toFinFlag]
-     (12 * (((r:ℝ) - 1) / r) ^ 3) • (1 : FlagAlgebra ∅ₜ)`.
+Parametric SDP-certificate infrastructure on the Automation layer, generalizing
+`Automation.K4freeP4` from K₄ to an arbitrary forbidden complete graph K_{r+1},
+for the `P₄`-density target `12·((r-1)/r)³`.
 
 The certificate consists of r-parameterized squared terms `f₁ r, f₂, f₃ r`,
 a K₄-density correction term `f₀ r`, and rational-function multipliers
@@ -24,15 +19,17 @@ tight on every flag, so the certificate is an *inequality*: the residual
 `leftover r = ∑ⱼ gapⱼ·Fⱼ` is a nonnegative combination of flags, and
 `gap_identity` records the exact algebraic identity
 `P4_density + ∑ pᵢ·fᵢ + leftover = (target)·1`. The multipliers `p₁,p₂,p₃`
-specialize at `r = 3` to `K4freeP4`'s `(8/9, 5, 35/9)`.
+specialize at `r = 3` to `K4freeP4`'s `(8/9, 5, 35/9)`; the `r = 3` bound
+`32/9` is proved in `K4freeP4.K4_free_P4_density_upper_bound` (there `f₀` is
+unnecessary since K₄ is forbidden).
 
-The development is `sorry`-free. Its one external dependency is the explicit
-`axiom Zykov_K4_density_bound` (Corollary 1.5: the K₄-density bound in K_{r+1}-free
-graphs — Zykov's classical generalized-Turán theorem), which is genuinely outside
-the flag-SOS machinery here; `#print axioms Kr_plus_1_free_P4_density_upper_bound`
-exhibits the dependence. The `r = 3` case specializes to
-`K4freeP4.K4_free_P4_density_upper_bound` with bound `32/9` (there `f₀` is
-unnecessary since K₄ is forbidden). -/
+The development is `sorry`-free and declares no axioms: everything here is
+verified flag-algebra computation. Turning the certificate into the global
+K_{r+1}-free `P₄`-density bound additionally needs Zykov's classical
+K₄-density bound (the non-negativity of `f₀ r` on the class), which is not
+proved in this repository; the `MetaTheory` §11 slice layer
+(`ParametricP4Slice` and the graphon-transport modules) therefore consumes
+`gap_identity` with that bound as an explicit hypothesis (`hZykov`). -/
 
 open FlagAlgebras Forbid FlagAlgebras.Automation
 open SimpleGraph
@@ -245,60 +242,6 @@ lemma p₀_nonneg (r : ℕ) (hr : 3 ≤ r) : 0 ≤ p₀ r := by
   · positivity
   · linarith
 
-/-- **Zykov's clique-density theorem (1949), the `K₄` / `K_{r+1}`-free case — taken
-as an explicit axiom, NOT proved in this project.**
-
-Stated at the graph-limit (positive-homomorphism) level, which is exactly the form
-the flag-algebra proof consumes: for every density homomorphism `φ₀` (graph limit)
-that kills `K_{r+1}` (`φ₀ ⟦K_{r+1}⟧ = 0`), the `K₄` density is at most that of the
-Turán graph `T(·, r)`,
-
-  `φ₀ ⟦K₄⟧ ≤ (r-1)(r-2)(r-3)/r³`
-
-(here `FlagAlgebra_4_0_0_10` is the `K₄` flag; the RHS is written as
-`(r³−6r²+11r−6)/r³`). This is Corollary 1.5 of Murphy–Nir (2021), an instance of
-Zykov's theorem that the Turán graph maximizes clique counts among `K_{r+1}`-free
-graphs. It is taken as an `axiom` because it is genuinely external to the SOS
-machinery here and is a substantial development on its own:
-
-* It is not in Mathlib (which has only the **edge** Turán theorem,
-  `SimpleGraph.isTuranMaximal_iff_nonempty_iso_turanGraph`) nor in this repo.
-* It cannot be obtained from the fixed-size flag-SOS certificate used elsewhere:
-  `f₀` carries a negative coefficient on the `K₄` atom, while every σ-type square
-  and every flag has a non-negative `K₄` coefficient. The bound is forced by the
-  global `K_{r+1}`-free structure (constraints appear only on `≥ r+1` vertices,
-  unbounded for parametric `r`).
-* There is no density-only shortcut: a brute-force search refutes the natural
-  telescoping inequality `kₛ₊₁·kₛ₋₁·(r-s+1) ≤ kₛ²·(r-s)` (it holds only at the
-  extremal graph), and `k₄` is not even a function of `(k₂,k₃)`. The bound is
-  asymptotic (finite graphs can exceed it), so a proof needs Zykov symmetrization
-  together with a graph-limit argument.
-
-`#print axioms Kr_plus_1_free_P4_density_upper_bound` lists this axiom, making the
-proof's dependence on the unproved result explicit. -/
-axiom Zykov_K4_density_bound (r : ℕ) (hr : 3 ≤ r) (φ₀ : PositiveHom ∅ₜ)
-    (hKfree : φ₀ ⟦basisVector (completeGraph (Fin (r + 1))).toFinFlag⟧ = 0)
-    : φ₀ FlagAlgebra_4_0_0_10 ≤ ((r : ℝ)^3 - 6 * r^2 + 11 * r - 6) / (r : ℝ)^3
-
-/-- **K₄ density in K_{r+1}-free graphs** is at most `(r-1)(r-2)(r-3)/r³`, i.e.
-`0 ≤ᵢ[K_{r+1}] f₀ r` (Corollary 1.5, Murphy–Nir 2021). The flag-algebra layer is
-discharged here: via `inducedForbidLE_emptyType_iff_inducedForbidLE` the goal reduces to the
-per-homomorphism `K₄`-density bound, which is exactly the `Zykov_K4_density_bound`
-axiom. -/
-lemma K4_density_upper_bound (r : ℕ) (hr : 3 ≤ r)
-    : 0 ≤ᵢ[(completeGraph (Fin (r + 1))).toFinFlag] f₀ r
-  := by
-  -- Reduce the probabilistic `inducedForbidLE` to the deterministic per-homomorphism form.
-  rw [← inducedForbidLE_emptyType_iff_inducedForbidLE]
-  intro φ₀ hKfree
-  -- The K₄ density of any K_{r+1}-free limit is at most the Turán value (Zykov, assumed).
-  have key := Zykov_K4_density_bound r hr φ₀ hKfree
-  -- Given `key`, the flag-algebra inequality `0 ≤ φ₀ (f₀ r)` follows by arithmetic.
-  have h0 : φ₀ (0 : FlagAlgebra ∅ₜ) = 0 := by simp
-  show φ₀ (0 : FlagAlgebra ∅ₜ) ≤ φ₀ (f₀ r)
-  rw [h0, f₀, PositiveHom.map_sub, PositiveHom.map_smul, PositiveHom.map_one, mul_one]
-  linarith [key]
-
 /-- The constant `1` is the sum of all eleven unlabeled 4-vertex flags (the
 size-4 partition-of-unity), unconditionally. -/
 lemma one_eq_sum_flags : (1 : FlagAlgebra ∅ₜ) =
@@ -365,99 +308,5 @@ lemma leftover_nonneg (r : ℕ) (hr : 3 ≤ r) : 0 ≤ leftover r := by
   · nlinarith [mul_nonneg (pow_nonneg h1 3) h7]
   · nlinarith [mul_nonneg (mul_nonneg h1 h7) (show (0:ℝ) ≤ 9*(r:ℝ)^2-18*r+10 by nlinarith [sq_nonneg ((r:ℝ)-1)])]
   · nlinarith [mul_nonneg h1 (show (0:ℝ) ≤ 6*(r:ℝ)^3-24*(r:ℝ)^2+37*r-21 by nlinarith [sq_nonneg ((r:ℝ)-3), hx, mul_nonneg (sq_nonneg ((r:ℝ)-3)) (show (0:ℝ)≤(r:ℝ) by linarith)])]
-
-/-- **Upper-bound direction of Theorem 1.3(i)** (Murphy–Nir 2021). For `r ≥ 3`
-and K_{r+1}-free graphs, the `P₄` density is at most `12·((r-1)/r)³`. Generalizes
-`K4freeP4.K4_free_P4_density_upper_bound` (the `r = 3`, bound `32/9` case).
-
-Proof: add the nonnegative SOS terms `pᵢ·fᵢ` and the K₄-correction `p₀·f₀`
-(nonnegative under K_{r+1}-free by `K4_density_upper_bound`), then close with the
-`gap_identity` and `leftover_nonneg`. The only nontrivial input is the K₄-density
-bound (`K4_density_upper_bound`, Cor 1.5). -/
-theorem Kr_plus_1_free_P4_density_upper_bound (r : ℕ) (hr : 3 ≤ r)
-    : P4_density ≤ᵢ[(completeGraph (Fin (r + 1))).toFinFlag]
-      (12 * (((r : ℝ) - 1) / r) ^ 3 : ℝ) • (1 : FlagAlgebra ∅ₜ)
-  := by
-  set F := (completeGraph (Fin (r + 1))).toFinFlag with hF
-  -- Step 1: add the four nonnegative certificate terms to the left-hand side.
-  have hp1 : (0 : FlagAlgebra ∅ₜ) ≤ᵢ[F] p₁ r • f₁ r :=
-    inducedForbidLE_of_le (nonneg_smul_nonneg_geq_zero (p₁_nonneg r hr) (f₁_nonneg r))
-  have hp2 : (0 : FlagAlgebra ∅ₜ) ≤ᵢ[F] p₂ r • f₂ :=
-    inducedForbidLE_of_le (nonneg_smul_nonneg_geq_zero (p₂_nonneg r hr) f₂_nonneg)
-  have hp3 : (0 : FlagAlgebra ∅ₜ) ≤ᵢ[F] p₃ r • f₃ r :=
-    inducedForbidLE_of_le (nonneg_smul_nonneg_geq_zero (p₃_nonneg r hr) (f₃_nonneg r))
-  have hp0 : (0 : FlagAlgebra ∅ₜ) ≤ᵢ[F] p₀ r • f₀ r := by
-    have h := inducedForbidLE_smul_nonneg (p₀_nonneg r hr) (K4_density_upper_bound r hr)
-    rwa [smul_zero] at h
-  have step1 : P4_density ≤ᵢ[F]
-      P4_density + p₁ r • f₁ r + p₂ r • f₂ + p₃ r • f₃ r + p₀ r • f₀ r :=
-    inducedForbidLE_trans_add_nonneg
-      (inducedForbidLE_trans_add_nonneg
-        (inducedForbidLE_trans_add_nonneg
-          (inducedForbidLE_trans_add_nonneg (inducedForbidLE_refl F P4_density) hp1) hp2) hp3) hp0
-  -- Step 2: the remaining gap is a nonnegative combination of flags (unconditional).
-  have step2 : (P4_density + p₁ r • f₁ r + p₂ r • f₂ + p₃ r • f₃ r + p₀ r • f₀ r) ≤ᵢ[F]
-      (12 * (((r : ℝ) - 1) / r) ^ 3 : ℝ) • (1 : FlagAlgebra ∅ₜ) := by
-    apply inducedForbidLE_of_le
-    rw [← gap_identity r hr]
-    exact le_add_of_nonneg_right (leftover_nonneg r hr)
-  exact inducedForbidLE_trans step1 step2
-
-
-/-- **Turán r-partite graphon limit — existence and P₄ density value — taken as an explicit
-axiom, NOT proved in this project.**
-
-Stated at the positive-homomorphism (graph-limit) level: for every `r ≥ 2` there
-exists a K_{r+1}-free positive homomorphism `φ` whose `P₄`-density equals
-`12·((r-1)/r)³` exactly (the Turán-graph limit value from Lemma 2.1, Murphy–Nir 2021).
-
-**Proof sketch (outside the flag-SOS machinery).**
-Take the flag sequence `s k = turanGraph (r·k) r`. For each `k`:
-
-* **K_{r+1}-freeness**: `SimpleGraph.turanGraph_cliqueFree` (Mathlib) gives
-  `(turanGraph (r·k) r).CliqueFree (r+1)`, hence
-  `(completeGraph (Fin (r+1))).Free (turanGraph (r·k) r)`.
-
-* **P₄ density**: for `n = r·k`, a direct counting argument gives the number of
-  induced copies of each relevant 4-vertex graph type in `turanGraph n r`:
-    · (induced P₄, atoms 6–7): 0 — the r-partite structure forbids induced P₄;
-    · C₄ (atom 8): C(r,2)·C(k,2)² → density `3(r-1)/r³`;
-    · K₄-e (atom 9): C(r,3)·3·C(k,2)·k² → density `6(r-1)(r-2)/r³`;
-    · K₄ (atom 10): C(r,4)·k⁴ → density `(r-1)(r-2)(r-3)/r³`.
-  The weighted sum in `P4_density = F₆ + 2F₇ + 4F₈ + 6F₉ + 12F₁₀` is therefore
-  `4·3(r-1)/r³ + 6·6(r-1)(r-2)/r³ + 12·(r-1)(r-2)(r-3)/r³ = 12·((r-1)/r)³`.
-
-* **Compactness**: `increasing_flagSeq_contain_convergent_subseq` extracts a convergent
-  subsequence; `flagSeq_limit_mem_positiveHom` produces the positive homomorphism `φ`;
-  `flagDensitySeq_eq_zero_of_free` forces `φ(K_{r+1}) = 0`.
-
-The formal obstacles are (a) the counting lemmas for `turanGraph (r·k) r` (nontrivial
-finset combinatorics), (b) connecting Mathlib's `CliqueFree` to the `Free` predicate
-used in `flagDensitySeq_eq_zero_of_free`, and (c) identifying the induced density
-sequence for each of `F₈`, `F₉`, `F₁₀` along the subsequence.
-
-`#print axioms Kr_plus_1_free_P4_density_achievable` lists this axiom. -/
-axiom Turan_limit_P4_density (r : ℕ) (hr : 2 ≤ r) :
-    ∃ φ : PositiveHom ∅ₜ,
-      φ ⟦basisVector (completeGraph (Fin (r + 1))).toFinFlag⟧ = 0 ∧
-      φ P4_density = 12 * (((r : ℝ) - 1) / r) ^ 3
-
-/-- **Lower-bound direction of Lemma 2.1** (Murphy–Nir 2021). For `r ≥ 3`, the
-K_{r+1}-free P₄ density upper bound `12·((r-1)/r)³` is **sharp**: there exists a
-K_{r+1}-free positive homomorphism `φ` achieving P₄ density exactly
-`12·((r-1)/r)³`.
-
-The witness is the balanced Turán r-partite graphon limit, whose existence and P₄
-density value are given by the axiom `Turan_limit_P4_density`. Together with
-`Kr_plus_1_free_P4_density_upper_bound` this completes Theorem 1.3(i) of Murphy–Nir
-2021: the optimal K_{r+1}-free P₄ density equals `12·((r-1)/r)³`.
-
-`#print axioms Kr_plus_1_free_P4_density_achievable` lists the two external dependencies:
-`Zykov_K4_density_bound` (for the upper bound) and `Turan_limit_P4_density` (here). -/
-theorem Kr_plus_1_free_P4_density_achievable (r : ℕ) (hr : 3 ≤ r) :
-    ∃ φ : PositiveHom ∅ₜ,
-      φ ⟦basisVector (completeGraph (Fin (r + 1))).toFinFlag⟧ = 0 ∧
-      φ P4_density = 12 * (((r : ℝ) - 1) / r) ^ 3 :=
-  Turan_limit_P4_density r (by omega)
 
 end CompleteGraphFreeP4

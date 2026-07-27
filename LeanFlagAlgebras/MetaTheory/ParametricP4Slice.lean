@@ -23,9 +23,9 @@ type `FlagType_2_0` (= `η`) and edge type `FlagType_2_1` (= `τ`):
   (`parametricP4_K4_density`).
 
 **The Zykov input is a hypothesis, not an axiom.**  The non-negativity of the `κ₄` term
-`f₀ r` on the class is Zykov's classical `K₄`-density bound; the `Automation` layer records
-it as `axiom Zykov_K4_density_bound`, but — following this development's practice for
-classical inputs (cf. `cor:degenerate-family`) — the theorems below take the bound as an
+`f₀ r` on the class is Zykov's classical `K₄`-density bound, which is not proved in this
+repository; following this development's practice for classical inputs
+(cf. `cor:degenerate-family`), the theorems below take the bound as an
 explicit hypothesis `hZykov`, keeping `MetaTheory` on the standard axioms.  At `r = 3` the
 `κ₄` coefficient `(r-1)(r-2)(r-3)/r³` vanishes and `f₀ 3 = 0•1₀ - K₄`, so the `r = 3`
 theorems (`k4freeP4_*` below) need **no Zykov input at all** — the slice equations of
