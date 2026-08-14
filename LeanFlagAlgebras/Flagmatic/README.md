@@ -30,6 +30,38 @@ Flagmatic/
 
 ---
 
+## The `flag_certificate` tactic
+
+The compiler runs **inside Lean's elaborator**, exposed as the
+`flag_certificate` tactic
+([`Automation/FlagCertificate.lean`](../Automation/FlagCertificate.lean)).
+A source file states the desired bound and proves it by naming the
+certificate file and the forbidden graph:
+
+```lean
+theorem Mantel_flagAlgebra
+    : FlagAlgebra_2_0_0_1 ≤[completeGraph (Fin 3)] (1 / 2 : ℝ) • (1 : FlagAlgebra ∅ₜ)
+  := by
+  flag_certificate "LeanFlagAlgebras/Flagmatic/Certificates/Mantel_cert.json" K3
+```
+
+The certificate is *candidate data only*, read at elaboration time: the
+tactic matches its flags against Lean's own canonical enumeration,
+reconstructs each SDP block matrix `M = R·Q'·Rᵀ` together with an exact
+rational `LDLᵀ` witness (re-checked in Lean by `psd_real_ldlt_terms`), and
+synthesizes the complete proof of exactly the stated theorem — a
+statement/certificate mismatch fails elaboration instead of proving an
+unintended theorem. The variant `flag_certificate?` additionally offers the
+synthesized script as a one-click `Try this:` suggestion, so the explicit
+proof (inline matrices, PSD checks, closing normalization) can be
+materialized, audited, and checked independently of the certificate file.
+
+One caveat of the elaboration-time design: the certificate is a build-time
+input that `lake` does not track, so editing a certificate does not by
+itself trigger rechecking of the Lean file that reads it.
+
+---
+
 ## One-line automation
 
 ```powershell
@@ -39,10 +71,16 @@ python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton `
     --namespace <Name> --force
 ```
 
-This single command generates imports, opens, namespace declarations, the
-`generate_forbid_free_*` commands, matrix/PSD proofs, sigma/v definitions, and
-the main theorem (auto-proved by tactics). Evaluation mode: `decide +kernel`
-by default, `--native-decide` to switch the generated file to `native_decide`.
+This single command writes the scaffolding around that theorem: imports,
+opens, namespace declarations, the `generate_forbid_free_*` commands, the
+main theorem `<Name>_flagAlgebra` proved by `flag_certificate`, and a
+Turán-density restatement `<Name>_turanDensity` (via
+`generalizedTuranDensity_le_of_forbidLE`) whose statement mentions no
+generated constant. Evaluation mode: `decide +kernel` by default,
+`--native-decide` to switch the generated file to `native_decide`.
+Passing `--materialize` instead emits the fully expanded legacy form, in
+which the matrices, PSD proofs, and the complete tactic proof appear in the
+source file itself and the certificate is not read at build time.
 
 For other subcommands, run `python flagmatic_to_lean.py --help` or check the
 docstring at the top of `flagmatic_to_lean.py`.
@@ -62,8 +100,10 @@ docstring at the top of `flagmatic_to_lean.py`.
 | `C5freeEdge.lean` | C₅ | edge | 5 | 4 | `1/2` | `native_decide` |
 
 File and theorem names follow the paper's case table: `<H>free<Target>`, with
-the two named cases (`Mantel`, `ErdosPentagon`) kept under their proper names;
-each file proves `<cert-stem>_flagAlgebra`.
+the two named cases (`Mantel`, `ErdosPentagon`) kept under their proper names.
+Each file proves `<cert-stem>_flagAlgebra` by `flag_certificate` and restates
+it as `<cert-stem>_turanDensity`, the generalized Turán-density bound whose
+statement mentions no generated constant.
 
 ---
 

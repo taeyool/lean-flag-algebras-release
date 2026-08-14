@@ -8,9 +8,12 @@ certificates into machine-checked extremal-combinatorics proofs.
 This repository is the public artifact accompanying our paper on formalized
 flag algebras. Its centrepiece — the main contribution of the paper — is the
 **Flagmatic-to-Lean pipeline** ([`LeanFlagAlgebras/Flagmatic/`](LeanFlagAlgebras/Flagmatic/README.md)):
-a certificate-to-proof compiler that translates SDP certificates produced by
+a certificate-to-proof compiler, invoked as the elaboration-time tactic
+**`flag_certificate`**, that turns SDP certificates produced by
 [Flagmatic](https://github.com/jsliacan/flagmatic) into complete Lean proofs
 of Turán-type density bounds, evaluated end-to-end on seven case studies.
+The theorem statement is fixed in the source file; the certificate enters
+only as untrusted hint data from which the proof is synthesized.
 Supporting it are the core flag-algebra library, a tactic layer, the
 meta-theory of forbidden-subgraph reasoning, and hand-developed lower bounds
 completing two Turán densities.
@@ -19,7 +22,10 @@ completing two Turán densities.
 
 The seven certificate-generated theorems (the paper's case table; SDP block
 data in the [Flagmatic README](LeanFlagAlgebras/Flagmatic/README.md)). Each
-theorem `<Name>_flagAlgebra` lives in namespace `<Name>`:
+theorem `<Name>_flagAlgebra` lives in namespace `<Name>` and is proved by
+`flag_certificate` from the committed certificate JSON; each file also
+restates its bound as the generated-constant-free Turán-density theorem
+`<Name>_turanDensity`:
 
 | Bound proved | Lean theorem | File | Checked by |
 |---|---|---|---|
@@ -53,8 +59,8 @@ tables are in the [MetaTheory README](LeanFlagAlgebras/MetaTheory/README.md)):
 
 | Area | Path | Description |
 |------|------|-------------|
-| **Flagmatic-to-Lean** (the main contribution) | [`LeanFlagAlgebras/Flagmatic`](LeanFlagAlgebras/Flagmatic/README.md) | `flagmatic_to_lean.py` compiles Flagmatic SDP certificates (JSON) into complete Lean proofs; the seven committed certificates and the proof files generated from them ([details](LeanFlagAlgebras/Flagmatic/README.md)) |
-| Tactics | `LeanFlagAlgebras/Automation` | Flag expansion / multiplication / sum-normalisation tactics and a PSD-certificate proof generator — the tactic layer the generated proofs run on |
+| **Flagmatic-to-Lean** (the main contribution) | [`LeanFlagAlgebras/Flagmatic`](LeanFlagAlgebras/Flagmatic/README.md) | The `flag_certificate` tactic compiles Flagmatic SDP certificates (JSON) into complete Lean proofs at elaboration time, with `flagmatic_to_lean.py` generating the surrounding source files; the seven committed certificates and the proof files generated from them ([details](LeanFlagAlgebras/Flagmatic/README.md)) |
+| Tactics | `LeanFlagAlgebras/Automation` | The `flag_certificate` certificate-to-proof elaborator (`FlagCertificate.lean`), flag expansion / multiplication / sum-normalisation tactics, and exact-rational `LDLᵀ` PSD checking — the tactic layer the generated proofs run on |
 | Core library | `LeanFlagAlgebras/{FlagAlgebra,Flags,Forbid,GraphAlgebra,Turan}` | Flags, flag algebras, densities, forbidden-subgraph classes, Turán densities |
 | Meta-theory | [`LeanFlagAlgebras/MetaTheory`](LeanFlagAlgebras/MetaTheory/README.md) | Completeness of forbidden-subgraph reasoning in flag algebras; graphon limits, blow-ups, root-planting, and a relative Positivstellensatz ([details](LeanFlagAlgebras/MetaTheory/README.md)). Self-contained paper source: [`MetaTheory/paper.tex`](LeanFlagAlgebras/MetaTheory/paper.tex) |
 | Worked results | `LeanFlagAlgebras/{MantelTheorem,ErdosPentagon}` | Hand-developed proofs of headline results, including the lower bounds above |
@@ -72,11 +78,14 @@ tables are in the [MetaTheory README](LeanFlagAlgebras/MetaTheory/README.md)):
   The two largest cases (`K5freeEdge`, `C5freeEdge`) discharge their finite
   computations with `native_decide` and therefore additionally trust Lean's
   compiler and runtime (`Lean.ofReduceBool`, `Lean.trustCompiler`).
-- **Trusted base.** Neither the SDP solver nor the Python compiler is trusted
-  for soundness: the generated files carry complete proofs that Lean checks.
-  The compiler is trusted only for *translation fidelity* — that the
-  generated statement is the one the certificate intended — which is audited
-  by reading the final theorem statements.
+- **Trusted base.** Neither the SDP solver nor the compiler frontends (the
+  `flag_certificate` metaprogram and the scaffolding script) are trusted for
+  soundness: every claim is carried by a proof term Lean checks. The anchor
+  for *translation fidelity* is the theorem statement fixed in the source
+  file — the tactic can only close the goal that statement poses, so a
+  mistranscribed target, forbidden graph, or bound surfaces as an
+  elaboration failure. What remains to audit is the statement itself, by
+  reading it in the source file.
 - The meta-theory layer keeps its own per-theorem audit: see the MetaTheory
   README sections
   [Status & verification](LeanFlagAlgebras/MetaTheory/README.md#status--verification)
@@ -118,10 +127,16 @@ python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton \
     LeanFlagAlgebras/Flagmatic/Mantel.lean --namespace Mantel --force
 ```
 
-This needs only Python 3 (standard library). Producing *new* SDP certificates
-additionally requires [Flagmatic](https://github.com/jsliacan/flagmatic),
-which runs under [SageMath](https://www.sagemath.org/); the seven committed
-certificates are Flagmatic's output as produced. See the
+The emitted file proves its main theorem by `flag_certificate`, which reads
+the certificate JSON at elaboration time; passing `--materialize` emits the
+fully expanded legacy form instead (inline matrices and tactic proof, no
+build-time certificate dependence), and `--native-decide` switches the
+file's finite computations to `native_decide` (used for the two largest
+cases). This needs only Python 3 (standard library). Producing *new* SDP
+certificates additionally requires
+[Flagmatic](https://github.com/jsliacan/flagmatic), which runs under
+[SageMath](https://www.sagemath.org/); the seven committed certificates are
+Flagmatic's output as produced. See the
 [Flagmatic README](LeanFlagAlgebras/Flagmatic/README.md) for the full
 workflow.
 
