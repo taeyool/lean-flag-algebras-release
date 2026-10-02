@@ -27,6 +27,48 @@ import LeanFlagAlgebras.FlagAlgebra.Compute.FastIso
 import LeanFlagAlgebras.FlagAlgebra.Compute.Downward
 import LeanFlagAlgebras.FlagAlgebra.Compute.FlagDensity
 
+-- BitMask (graphs as bit masks: kernel-checked canonicalization sweeps and the
+-- density bridges behind the decide +kernel routes of the K5/C5 examples)
+import LeanFlagAlgebras.BitMask.Mask2
+import LeanFlagAlgebras.BitMask.CanonSmall
+import LeanFlagAlgebras.BitMask.Canon2Data
+import LeanFlagAlgebras.BitMask.Canon3Data
+import LeanFlagAlgebras.BitMask.Canon4Data
+import LeanFlagAlgebras.BitMask.Canon5Data
+import LeanFlagAlgebras.BitMask.Canon5
+import LeanFlagAlgebras.BitMask.Canon6Data
+import LeanFlagAlgebras.BitMask.Canon6Checker
+import LeanFlagAlgebras.BitMask.Canon6Sweep0
+import LeanFlagAlgebras.BitMask.Canon6Sweep1
+import LeanFlagAlgebras.BitMask.Canon6Sweep2
+import LeanFlagAlgebras.BitMask.Canon6Sweep3
+import LeanFlagAlgebras.BitMask.Canon6
+import LeanFlagAlgebras.BitMask.Density
+import LeanFlagAlgebras.BitMask.Density6
+import LeanFlagAlgebras.BitMask.MaskBridge
+import LeanFlagAlgebras.BitMask.RootedMask
+import LeanFlagAlgebras.BitMask.RootedDensity
+import LeanFlagAlgebras.BitMask.RootedCanon
+import LeanFlagAlgebras.BitMask.RCanon1_2Data
+import LeanFlagAlgebras.BitMask.RCanon1_3Data
+import LeanFlagAlgebras.BitMask.RCanon1_5Data
+import LeanFlagAlgebras.BitMask.RCanon2_3Data
+import LeanFlagAlgebras.BitMask.RCanon2_4Data
+import LeanFlagAlgebras.BitMask.RCanon3_4Data
+import LeanFlagAlgebras.BitMask.RCanon3_5Data
+import LeanFlagAlgebras.BitMask.RCanon2_6Data
+import LeanFlagAlgebras.BitMask.RCanon2_6Checker
+import LeanFlagAlgebras.BitMask.RCanon2_6Sweep0
+import LeanFlagAlgebras.BitMask.RCanon2_6Sweep1
+import LeanFlagAlgebras.BitMask.RCanon2_6Sweep2
+import LeanFlagAlgebras.BitMask.RCanon2_6Sweep3
+import LeanFlagAlgebras.BitMask.RCanon2_6
+import LeanFlagAlgebras.BitMask.RootedCount
+import LeanFlagAlgebras.BitMask.RootedMatrix
+import LeanFlagAlgebras.BitMask.RootedAccept
+import LeanFlagAlgebras.BitMask.RootedHfree
+import LeanFlagAlgebras.BitMask.SubHfree
+
 -- Flags
 import LeanFlagAlgebras.Flags.FlagGenerator
 import LeanFlagAlgebras.Flags.Densities.DensityThmGenerator
@@ -62,9 +104,6 @@ import LeanFlagAlgebras.Forbid.CommonGraphs
 
  -- ErdosPentagon
 import LeanFlagAlgebras.ErdosPentagon.FlagDef
-import LeanFlagAlgebras.ErdosPentagon.MatrixDef
-import LeanFlagAlgebras.ErdosPentagon.FlagMul
-import LeanFlagAlgebras.ErdosPentagon.Lemmas
 import LeanFlagAlgebras.ErdosPentagon.ErdosPentagon
 
 -- Flagmatic (the seven paper case studies, in the order of the paper's Section 5.4 table).
@@ -94,6 +133,9 @@ The imports above are grouped by layer, roughly from foundations upward:
 * **GraphAlgebra** — subgraph densities and the graph algebra.
 * **FlagAlgebra** — flag definitions, densities, the flag algebra, positive
   homomorphisms, random homomorphisms, quadratic forms, and `Compute.*`.
+* **BitMask** — graphs encoded as natural numbers, kernel-checked
+  canonicalization sweeps, and the density bridges that let the generators
+  discharge every finite identity by `decide +kernel`.
 * **Flags** — the flag/density loaders and generated flag definitions.
 * **API** — the reusable proof-automation layer (`Basic`, `ExprHelpers`,
   `FlagExpand`, `FlagMulReduce`, `FlagSumSort`) and the per-problem

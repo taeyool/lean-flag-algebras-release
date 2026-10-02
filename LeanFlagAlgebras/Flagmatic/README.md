@@ -76,8 +76,13 @@ opens, namespace declarations, the `generate_forbid_free_*` commands, the
 main theorem `<Name>_flagAlgebra` proved by `flag_certificate`, and a
 Turán-density restatement `<Name>_turanDensity` (via
 `generalizedTuranDensity_le_of_forbidLE`) whose statement mentions no
-generated constant. Evaluation mode: `decide +kernel` by default,
-`--native-decide` to switch the generated file to `native_decide`.
+generated constant. Evaluation mode: `decide +kernel` by default.
+`--mask-density` routes the pair densities through the bit-mask kernel
+routes of `LeanFlagAlgebras/BitMask`, and `--mask-flagsets` does the same for
+the flag lists of a non-clique forbidden graph; `K5freeEdge` uses the first,
+`C5freeEdge` both, and each file's header records its exact regeneration
+command. `--native-decide` switches the generated file to `native_decide`;
+no committed case uses it.
 Passing `--materialize` instead emits the fully expanded legacy form, in
 which the matrices, PSD proofs, and the complete tactic proof appear in the
 source file itself and the certificate is not read at build time.
@@ -96,8 +101,8 @@ docstring at the top of `flagmatic_to_lean.py`.
 | `K3freeC4.lean` | K₃ | C₄ | 4 | 2 | `3/8` | `decide +kernel` |
 | `K4freeEdge.lean` | K₄ | edge | 4 | 2 | `2/3` | `decide +kernel` |
 | `ErdosPentagon.lean` | K₃ | C₅ | 5 | 3 | `24/625` | `decide +kernel` |
-| `K5freeEdge.lean` | K₅ | edge | 5 | 4 | `3/4` | `native_decide` |
-| `C5freeEdge.lean` | C₅ | edge | 5 | 4 | `1/2` | `native_decide` |
+| `K5freeEdge.lean` | K₅ | edge | 5 | 4 | `3/4` | `decide +kernel` (bit-mask route) |
+| `C5freeEdge.lean` | C₅ | edge | 5 | 4 | `1/2` | `decide +kernel` (bit-mask route) |
 
 File and theorem names follow the paper's case table: `<H>free<Target>`, with
 the two named cases (`Mantel`, `ErdosPentagon`) kept under their proper names.

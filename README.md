@@ -34,8 +34,8 @@ restates its bound as the generated-constant-free Turán-density theorem
 | `K₃`-free: `C₄` density ≤ 3/8 | `K3freeC4_flagAlgebra` | [`Flagmatic/K3freeC4.lean`](LeanFlagAlgebras/Flagmatic/K3freeC4.lean) | `decide +kernel` |
 | `K₄`-free: edge density ≤ 2/3 | `K4freeEdge_flagAlgebra` | [`Flagmatic/K4freeEdge.lean`](LeanFlagAlgebras/Flagmatic/K4freeEdge.lean) | `decide +kernel` |
 | `K₃`-free: `C₅` density ≤ 24/625 (Erdős pentagon) | `ErdosPentagon_flagAlgebra` | [`Flagmatic/ErdosPentagon.lean`](LeanFlagAlgebras/Flagmatic/ErdosPentagon.lean) | `decide +kernel` |
-| `K₅`-free: edge density ≤ 3/4 | `K5freeEdge_flagAlgebra` | [`Flagmatic/K5freeEdge.lean`](LeanFlagAlgebras/Flagmatic/K5freeEdge.lean) | `native_decide` |
-| `C₅`-free: edge density ≤ 1/2 | `C5freeEdge_flagAlgebra` | [`Flagmatic/C5freeEdge.lean`](LeanFlagAlgebras/Flagmatic/C5freeEdge.lean) | `native_decide` |
+| `K₅`-free: edge density ≤ 3/4 | `K5freeEdge_flagAlgebra` | [`Flagmatic/K5freeEdge.lean`](LeanFlagAlgebras/Flagmatic/K5freeEdge.lean) | `decide +kernel` (bit-mask route) |
+| `C₅`-free: edge density ≤ 1/2 | `C5freeEdge_flagAlgebra` | [`Flagmatic/C5freeEdge.lean`](LeanFlagAlgebras/Flagmatic/C5freeEdge.lean) | `decide +kernel` (bit-mask route) |
 
 The certificate argument gives the upper-bound direction; hand-developed
 lower bounds complete two Turán densities:
@@ -62,6 +62,7 @@ tables are in the [MetaTheory README](LeanFlagAlgebras/MetaTheory/README.md)):
 | **Flagmatic-to-Lean** (the main contribution) | [`LeanFlagAlgebras/Flagmatic`](LeanFlagAlgebras/Flagmatic/README.md) | The `flag_certificate` tactic compiles Flagmatic SDP certificates (JSON) into complete Lean proofs at elaboration time, with `flagmatic_to_lean.py` generating the surrounding source files; the seven committed certificates and the proof files generated from them ([details](LeanFlagAlgebras/Flagmatic/README.md)) |
 | Tactics | `LeanFlagAlgebras/Automation` | The `flag_certificate` certificate-to-proof elaborator (`FlagCertificate.lean`), flag expansion / multiplication / sum-normalisation tactics, and exact-rational `LDLᵀ` PSD checking — the tactic layer the generated proofs run on |
 | Core library | `LeanFlagAlgebras/{FlagAlgebra,Flags,Forbid,GraphAlgebra,Turan}` | Flags, flag algebras, densities, forbidden-subgraph classes, Turán densities |
+| Bit-mask evaluation | `LeanFlagAlgebras/BitMask` | Graphs encoded as natural numbers; kernel-checked canonicalization sweeps over all graphs (and rooted flags) on up to six vertices, and the density bridges that let the generators discharge every finite identity by `decide +kernel`. The witness data are produced by the unverified scripts `gen_canon.py` / `gen_sweep6.py` and checked by the kernel |
 | Meta-theory | [`LeanFlagAlgebras/MetaTheory`](LeanFlagAlgebras/MetaTheory/README.md) | Completeness of forbidden-subgraph reasoning in flag algebras; graphon limits, blow-ups, root-planting, and a relative Positivstellensatz ([details](LeanFlagAlgebras/MetaTheory/README.md)). Self-contained paper source: [`MetaTheory/paper.tex`](LeanFlagAlgebras/MetaTheory/paper.tex) |
 | Worked results | `LeanFlagAlgebras/{MantelTheorem,ErdosPentagon}` | Hand-developed proofs of headline results, including the lower bounds above |
 
@@ -72,12 +73,13 @@ tables are in the [MetaTheory README](LeanFlagAlgebras/MetaTheory/README.md)):
   kernel. The root module
   [`LeanFlagAlgebras.lean`](LeanFlagAlgebras.lean) imports the entire
   library, so `lake build` re-verifies everything.
-- **Axioms.** Five of the seven certificate case studies are checked entirely
-  by `decide +kernel`: `#print axioms` on their main theorems lists only
-  Lean's three standard axioms (`propext`, `Classical.choice`, `Quot.sound`).
-  The two largest cases (`K5freeEdge`, `C5freeEdge`) discharge their finite
-  computations with `native_decide` and therefore additionally trust Lean's
-  compiler and runtime (`Lean.ofReduceBool`, `Lean.trustCompiler`).
+- **Axioms.** All seven certificate case studies are checked entirely by
+  `decide +kernel`; the two largest (`K5freeEdge`, `C5freeEdge`) reach the
+  kernel through the bit-mask routes of `LeanFlagAlgebras/BitMask`. `#print
+  axioms` on their main theorems and on `Mantel_Turan` and
+  `ErdosPentagon_Turan` lists only Lean's three standard axioms (`propext`,
+  `Classical.choice`, `Quot.sound`); none of them depends on `native_decide`
+  (`Lean.ofReduceBool`, `Lean.trustCompiler`).
 - **Trusted base.** Neither the SDP solver nor the compiler frontends (the
   `flag_certificate` metaprogram and the scaffolding script) are trusted for
   soundness: every claim is carried by a proof term Lean checks. The anchor
@@ -111,9 +113,27 @@ lake build
 lake build LeanFlagAlgebras.Flagmatic.Mantel
 ```
 
-A full build is heavy (several thousand compilation jobs; some certificate
-proofs use `native_decide`), so building individual modules is often more
-convenient.
+A full build is heavy: several thousand compilation jobs, and some single
+files need tens of gigabytes of memory because every finite identity is
+evaluated in the kernel. Lake cannot limit how many files it compiles at
+once, so plan for memory as follows.
+
+- The six heaviest library modules (`BitMask.Density6`,
+  `BitMask.RootedAccept`, `BitMask.RCanon2_6Sweep0`–`3`, each 26–37 GB) import
+  one another in sequence, so Lake always builds them one at a time.
+- The three largest examples are independent of each other: the Erdős
+  pentagon (about 45 min, 43 GB), `K5freeEdge` (about 27 min, 30 GB) and
+  `C5freeEdge` (about 18 min, 27 GB), measured on an i7-14700K. On a machine
+  with 64 GB or less, build them one at a time before the full build:
+
+```bash
+lake build LeanFlagAlgebras.Flagmatic.ErdosPentagon
+lake build LeanFlagAlgebras.Flagmatic.K5freeEdge
+lake build LeanFlagAlgebras.Flagmatic.C5freeEdge
+lake build
+```
+
+Building individual modules is often more convenient.
 
 ### Regenerating the generated proofs (optional)
 
@@ -130,9 +150,12 @@ python LeanFlagAlgebras/Flagmatic/flagmatic_to_lean.py gen-skeleton \
 The emitted file proves its main theorem by `flag_certificate`, which reads
 the certificate JSON at elaboration time; passing `--materialize` emits the
 fully expanded legacy form instead (inline matrices and tactic proof, no
-build-time certificate dependence), and `--native-decide` switches the
-file's finite computations to `native_decide` (used for the two largest
-cases). This needs only Python 3 (standard library). Producing *new* SDP
+build-time certificate dependence). `--mask-density` (and, for non-clique
+forbidden graphs, `--mask-flagsets`) routes the pair densities and flag lists
+through the bit-mask kernel routes; `K5freeEdge` and `C5freeEdge` use them,
+and every file's header records the exact command that regenerates it.
+`--native-decide` switches a file's finite computations to `native_decide`;
+no committed case uses it. This needs only Python 3 (standard library). Producing *new* SDP
 certificates additionally requires
 [Flagmatic](https://github.com/jsliacan/flagmatic), which runs under
 [SageMath](https://www.sagemath.org/); the seven committed certificates are

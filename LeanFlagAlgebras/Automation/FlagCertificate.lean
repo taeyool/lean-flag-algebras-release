@@ -49,6 +49,45 @@ open Flags.Densities
 
 namespace FlagAlgebras.Automation.FlagCertificate
 
+/-- How many `reduce_downward_flagmul` summands `flag_certificate` moves onto the right-hand side
+before pausing to sort and merge it.
+
+`reduce_downward_flagmul` drains the left-hand side one product at a time, so with a single
+sort at the end (`0`, the old behaviour) that sort sees the whole certificate at once. The
+sort/merge pass is superlinear in the number of summands, so doing it every `n` products
+instead — over the merged residue plus `n` fresh terms — is substantially cheaper, and the
+downstream `expand_one_hfree_at` / `simp [downward…]` steps then run over an already-collapsed
+sum too.
+
+Chunking is not free: `norm_num` re-runs once per round, so very small values lose. `32` measured
+best on the examples in this repo (`K5freeEdge` 91.9 s → 61.8 s; the 6-vertex `K3freeC6`
+59 min → 5 min). Set to `0` to recover the single-pass behaviour. -/
+register_option flagCert.sortChunk : Nat := {
+  defValue := 32
+  descr := "flag_certificate: sort/merge the accumulated RHS every n reduction steps (0 = once)"
+}
+
+/-- Drain the left-hand side with `reduce_downward_flagmul`, sorting and merging the accumulated
+right-hand side every `chunk` summands (`chunk = 0`: drain fully, sort once — the caller's tail
+then does the single normalization). See `flagCert.sortChunk`. -/
+def reduceAndSortChunked (chunk : Nat) : TacticM Unit := do
+  prepareReduceDownwardFlagMul
+  if chunk == 0 then
+    discard <| reduceDownwardFlagMulChunk 1000000
+    return
+  repeat
+    let steps ← reduceDownwardFlagMulChunk chunk
+    if steps == 0 then break
+    -- Restricted to the right-hand side: the summands still waiting on the left must keep the
+    -- `downward (c • (A * B))` shape that `stepReduceDownwardFlagMul` matches on.
+    evalTactic (← `(tactic|
+      try (conv_rhs =>
+        simp only [smul_smul, downward_add, downward_smul, downward_neg, downward_zero])))
+    evalTactic (← `(tactic| flagsum_ac_sort_rhs_pipeline))
+
+@[inherit_doc reduceAndSortChunked]
+elab "reduce_downward_flagmul_chunked " n:num : tactic => reduceAndSortChunked n.getNat
+
 /-! ## Rational and flagmatic-string parsing -/
 
 /-- Parse `"a/b"`, `"a"` (possibly negative) into a `Rat`. -/
@@ -484,17 +523,22 @@ def requiredCommands (cert : CertData) (tag : String)
   for (n, k, m) in triples.mergeSort tripleLE do
     out := out ++ [(s!"generate_forbid_free_flags {n} {k} {m} {tag}",
       Name.mkSimple s!"flagSetHfree_{n}_{k}_{m}_{tag}")]
-  -- Pair densities + products, per block in certificate order.
+  -- Pair densities + products, per block in certificate order. The pair-density
+  -- sentinel is the FIRST per-pair value theorem (first forbid-free pattern
+  -- index against the first forbid-free typed host index): both the batched
+  -- native route and the BitMask kernel route (`flagGen.maskPairDensity`) emit
+  -- it, whereas `pairDensityBatch_…_0` exists only on the batched route.
   let mut seen : List (Nat × Nat × Nat) := []
   for b in cert.blocks do
     let key := (b.patN, b.typeK, b.typeIdx)
     unless seen.contains key do
       seen := seen ++ [key]
       let i0 := patternFree0 b.patN b.typeK b.typeIdx
+      let h0 := patternFree0 cert.hostN b.typeK b.typeIdx
       out := out ++
         [(s!"generate_forbid_free_flag_pair_density_theorems {b.patN} {cert.hostN} {b.typeK} {b.typeIdx} {tag}",
           Name.mkSimple
-            s!"pairDensityBatch_{b.patN}_{b.typeK}_{b.typeIdx}_{cert.hostN}_{b.typeK}_{b.typeIdx}_0"),
+            s!"flagDensity₂_Flag_{b.patN}_{b.typeK}_{b.typeIdx}_{i0}_Flag_{b.patN}_{b.typeK}_{b.typeIdx}_{i0}_Flag_{cert.hostN}_{b.typeK}_{b.typeIdx}_{h0}"),
          (s!"generate_forbid_free_mul_theorems {b.patN} {cert.hostN} {b.typeK} {b.typeIdx} {tag}",
           Name.mkSimple
             s!"flagMul_FlagAlgebra_{b.patN}_{b.typeK}_{b.typeIdx}_{i0}_FlagAlgebra_{b.patN}_{b.typeK}_{b.typeIdx}_{i0}")]
@@ -539,13 +583,14 @@ def runFlagCertificate (pathStx : TSyntax `str) (fStx : TSyntax `ident)
 
   let mut patternFree0Map : List ((Nat × Nat × Nat) × Nat) := []
   for b in cert.blocks do
-    let key := (b.patN, b.typeK, b.typeIdx)
-    unless patternFree0Map.any (·.1 == key) do
-      let rows ← evalFlagRows b.typeK b.typeIdx b.patN
-      let free := (List.range rows.length).filter fun i =>
-        ¬ subgraphContainsL cert.forbidN cert.forbidEdges b.patN
-          ((rows.getD i (0, [], [], 0, 0)).2.1)
-      patternFree0Map := patternFree0Map ++ [(key, free.headD 0)]
+    for nn in [b.patN, cert.hostN] do
+      let key := (nn, b.typeK, b.typeIdx)
+      unless patternFree0Map.any (·.1 == key) do
+        let rows ← evalFlagRows b.typeK b.typeIdx nn
+        let free := (List.range rows.length).filter fun i =>
+          ¬ subgraphContainsL cert.forbidN cert.forbidEdges nn
+            ((rows.getD i (0, [], [], 0, 0)).2.1)
+        patternFree0Map := patternFree0Map ++ [(key, free.headD 0)]
   let patternFree0 : Nat → Nat → Nat → Nat := fun n k m =>
     (patternFree0Map.find? (·.1 == (n, k, m))).map (·.2) |>.getD 0
 
@@ -734,8 +779,14 @@ size ≤ 16 are supported (extend Automation/FinSumUniv.lean and finSumUnivWord)
     scriptLines := scriptLines.push "rw [forbidLEWith_rw_left_add_right flagCert_expand]"
   tacs := tacs.push (← `(tactic| simp [$[$simpArgs:term],*]))
   scriptLines := scriptLines.push simpStr
-  tacs := tacs.push (← `(tactic| reduce_downward_flagmul))
-  scriptLines := scriptLines.push "reduce_downward_flagmul"
+  let sortChunk := flagCert.sortChunk.get (← getOptions)
+  if sortChunk == 0 then
+    tacs := tacs.push (← `(tactic| reduce_downward_flagmul))
+    scriptLines := scriptLines.push "reduce_downward_flagmul"
+  else
+    let chunkLit : TSyntax `num := Syntax.mkNumLit (toString sortChunk)
+    tacs := tacs.push (← `(tactic| reduce_downward_flagmul_chunked $chunkLit))
+    scriptLines := scriptLines.push s!"reduce_downward_flagmul_chunked {sortChunk}"
   let hostNLit : TSyntax `num := Syntax.mkNumLit (toString cert.hostN)
   tacs := tacs.push (← `(tactic| expand_one_hfree_at $hostNLit $fStx))
   scriptLines := scriptLines.push s!"expand_one_hfree_at {cert.hostN} {tag}"

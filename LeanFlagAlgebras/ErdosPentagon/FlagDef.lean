@@ -1,36 +1,24 @@
 import LeanFlagAlgebras.Flags.FlagGenerator
 import LeanFlagAlgebras.Forbid.TuranDensity
 import LeanFlagAlgebras.Forbid.CommonGraphs
-import LeanFlagAlgebras.ErdosPentagon.MatrixDef
 
-/-! # Erdős pentagon problem: flags and certificate vectors
+/-! # Erdős pentagon problem: the graphs
 
 Sets up the combinatorial data for the Erdős pentagon problem (maximum density
-of the 5-cycle in triangle-free graphs). Defines the pentagon graph `C5`, the
-three labelled types `σ₀`/`σ₁`/`σ₂` (the 3-vertex types `K3_*`) used for the
-sum-of-squares certificate, and the flag-algebra vectors `v₀`/`v₁`/`v₂` of
-4-vertex flags that are paired with the PSD matrices `P`/`Q`/`R` from
-`MatrixDef.lean`. -/
+of the 5-cycle in triangle-free graphs): the forbidden triangle `K3` and the
+pentagon `C5`. The upper bound itself is the Flagmatic certificate of
+`Flagmatic/ErdosPentagon.lean`, connected to `C5` in `ErdosPentagon.lean`. -/
 
 open FlagAlgebras SimpleGraph Compute
 
 namespace ErdosPentagonAPI
 
--- Locally generate the flags this development uses (formerly from the global
--- `Flags/FlagDef.lean`): empty-typed underlying flags (n = 3 for the forbidden `K3`,
--- n = 4/5 for the pattern/host and the pentagon `C5`), the forbidden graph `K3`, and the
--- σ-typed (3-labelled) pattern/host flags. These `ErdosPentagonAPI.*` constants are
--- shared by `FlagMul` / `Lemmas` / `ErdosPentagon` (which all import this file).
+-- Locally generate the empty-typed flags on 3, 4 and 5 vertices; the forbidden
+-- `K3` and the pentagon `C5` use sizes 3 and 5.
 generate_empty_typed_flags 3
 generate_empty_typed_flags 4
 generate_empty_typed_flags 5
 generate_complete_graph 3 3
-generate_flags 4 3 0
-generate_flags 4 3 1
-generate_flags 4 3 2
-generate_flags 5 3 0
-generate_flags 5 3 1
-generate_flags 5 3 2
 
 /-- The 5-cycle `C₅` on `Fin 5` (edges `01,12,23,34,40`); the target subgraph
 whose triangle-free density is being maximised. -/
@@ -62,30 +50,5 @@ lemma C5_toFlagAlgebra_eq
   }
 
 #print Sym2Graph_5_0_0_19 -- s(0, 1), s(0, 2), s(1, 3), s(2, 4), s(3, 4)
-
-/-- First 3-vertex labelled type used by the SOS certificate. -/
-def σ₀ : FlagType (Fin 3) := FlagType_3_0
-/-- Second 3-vertex labelled type used by the SOS certificate. -/
-def σ₁ : FlagType (Fin 3) := FlagType_3_1
-/-- Third 3-vertex labelled type used by the SOS certificate. -/
-def σ₂ : FlagType (Fin 3) := FlagType_3_2
-
-/-- Vector of eight 4-vertex flags over type `σ₀`, paired with the PSD matrix
-`P` to form one square term of the certificate. -/
-noncomputable def v₀ : FlagAlgebraVec σ₀ 8 := ![
-  FlagAlgebra_4_3_0_0, FlagAlgebra_4_3_0_1, FlagAlgebra_4_3_0_2, FlagAlgebra_4_3_0_4, FlagAlgebra_4_3_0_3, FlagAlgebra_4_3_0_5, FlagAlgebra_4_3_0_6, FlagAlgebra_4_3_0_7
-]
-
-/-- Vector of six 4-vertex flags over type `σ₁`, paired with the PSD matrix
-`Q` to form one square term of the certificate. -/
-noncomputable def v₁ : FlagAlgebraVec σ₁ 6 := ![
-  FlagAlgebra_4_3_1_0, FlagAlgebra_4_3_1_1, FlagAlgebra_4_3_1_2, FlagAlgebra_4_3_1_3, FlagAlgebra_4_3_1_5, FlagAlgebra_4_3_1_6
-]
-
-/-- Vector of five 4-vertex flags over type `σ₂`, paired with the PSD matrix
-`R` to form one square term of the certificate. -/
-noncomputable def v₂ : FlagAlgebraVec σ₂ 5 := ![
-  FlagAlgebra_4_3_2_0, FlagAlgebra_4_3_2_2, FlagAlgebra_4_3_2_1, FlagAlgebra_4_3_2_3, FlagAlgebra_4_3_2_6
-]
 
 end ErdosPentagonAPI
